@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "globals.h"
 #include "registries.h"
@@ -8,7 +9,8 @@
 
 void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
 
-  uint8_t i, filled = 0, first = 10, identical = true;
+  uint8_t i, filled = 0, first = 10;
+  bool identical = true;
   for (i = 0; i < 9; i ++) {
     if (player->craft_items[i]) {
       filled ++;
