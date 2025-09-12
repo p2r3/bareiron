@@ -6,6 +6,9 @@ The goal of this project is to enable hosting Minecraft servers on very weak dev
 - Minecraft version: `1.21.8`
 - Protocol version: `772`
 
+> [!WARNING]
+> This server is unstable with Fabric client modifications. For best compatibility, use vanilla Minecraft client.
+
 ## Quick start
 For PC x86_64 platforms, grab the [latest build binary](https://github.com/p2r3/bareiron/releases/download/latest/bareiron.exe) and run it. The file is a [Cosmopolitan polyglot](https://github.com/jart/cosmopolitan), which means it'll run on Windows, Linux, and possibly Mac, despite the file extension. Note that the server's default settings cannot be reconfigured without compiling from source.
 
