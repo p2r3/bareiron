@@ -1,8 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 if not exist "%~dp0src\registries.h" (
-    echo ERROR: "%~dp0src\registries.h" not found.
-    echo Please prepare the correct registries.h file in the src folder.
+    echo Error: 'include/registries.h' is missing.
+    echo Please follow the 'Compilation' section of the README to generate it.
     pause
     exit /b 1
 )
