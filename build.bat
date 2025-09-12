@@ -4,7 +4,8 @@ setlocal enabledelayedexpansion
 if not exist "include\registries.h" (
     echo Error: 'include/registries.h' is missing.
     echo Please follow the 'Compilation' section of the README to generate it.
-    exit /b 1
+    pause
+	exit /b 1
 )
 
 set "files="
@@ -14,6 +15,7 @@ for %%f in (src\*.c) do (
 
 if "%files%"=="" (
     echo No C source files found in "src".
+	pause
     exit /b 1
 )
 
