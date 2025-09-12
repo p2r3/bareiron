@@ -12,7 +12,7 @@ For PC x86_64 platforms, grab the [latest build binary](https://github.com/p2r3/
 For microcontrollers, see the section on **compilation** below.
 
 ## Compilation
-Before compiling, you'll need to dump registry data from a vanilla Minecraft server. Create a folder called `notchian` here, and put a Minecraft server JAR in it. Then, follow [this guide](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Data_Generators) to dump all of the registries. Finally, run `build_registries.js` with `node`, `bun`, or `deno`.
+Before compiling, you'll need to dump registry data from a vanilla Minecraft server. On Linux, this can be done automatically using the `extract_registries.sh` script. Otherwise, the manual process is as follows: create a folder called `notchian` here, and put a Minecraft server JAR in it. Then, follow [this guide](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Data_Generators) to dump all of the registries. Finally, run `build_registries.js` with `node`, `bun`, or `deno`.
 
 - To target Linux, install `gcc` and run `build.sh`
 - To target an ESP variant, set up a PlatformIO project and clone this repository on top of it. See **Configuration** below for further steps.
