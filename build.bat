@@ -1,9 +1,28 @@
 @echo off
 setlocal enabledelayedexpansion
-set files=
-for /f "usebackq delims=" %%f in (`dir /b "%cd%\src\*.c"`) do (
-    set files=!files! src\%%f
+if not exist "%~dp0src\registries.h" (
+    echo ERROR: "%~dp0src\registries.h" not found.
+    echo Please prepare the correct registries.h file in the src folder.
+    pause
+    exit /b 1
 )
-if exist bareiron.exe del bareiron.exe
-gcc %files% -o bareiron
-pause
+set "files="
+for /f "delims=" %%f in ('dir /b "%~dp0src\*.c" 2^>nul') do (
+    set "files=!files! "%~dp0src%%f""
+)
+if "%files%"=="" (
+    echo No C source files found in "%~dp0src".
+    echo Add .c files to the src folder and try again.
+    pause
+    exit /b 1
+)
+if exist "%~dp0bareiron.exe" del /q "%~dp0bareiron.exe"
+gcc %files% -o "%~dp0bareiron.exe"
+if errorlevel 1 (
+    echo Build failed.
+    pause
+    exit /b 1
+) else (
+    echo Build succeeded: "%~dp0bareiron.exe"
+    pause
+)
