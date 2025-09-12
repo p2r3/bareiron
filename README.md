@@ -81,7 +81,8 @@ Commands you will have to use :
 2 - Write the service file content ( you can use the one i made )
 
 Paste the following :
-`[Unit]
+
+[Unit]
 Description=Minecraft Server
 After=network.target
 
@@ -91,7 +92,7 @@ Restart=always
 WorkingDirectory=/home/
 
 [Install]
-WantedBy=multi-user.target`
+WantedBy=multi-user.target
 
 3 - Grant your Debian / Ubuntu device the permissions to run the bareiron.exe file
 
