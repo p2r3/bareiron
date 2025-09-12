@@ -15,8 +15,8 @@ For microcontrollers, see the section on **compilation** below.
 Before compiling, you'll need to dump registry data from a vanilla Minecraft server. Create a folder called `notchian` here, and put a Minecraft server JAR in it. Then, follow [this guide](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Data_Generators) to dump all of the registries. Finally, run `build_registries.js` with `node`, `bun`, or `deno`.
 
 - To target Linux, install `gcc` and run `build.sh`
+- To target Windows, install `gcc` and run `build.bat`
 - To target an ESP variant, set up a PlatformIO project and clone this repository on top of it. Set your WiFi credentials in `include/globals.h`.
-- There's currently no streamlined build process for Windows. Contributions in this area are welcome!
 
 ## Configuration
 Configuring the server requires compiling it from its source code (see section above). 
