@@ -639,13 +639,12 @@ uint8_t isPassableBlock (uint8_t block) {
 }
 // Checks whether the given block is non-solid and spawnable
 uint8_t IsPassableBlockNotSpawnable(uint8_t block) {
-    if (block == B_air ||
-        (block >= B_water && block < B_water + 8) ||
-        (block >= B_lava && block < B_lava + 4) 
+    if ((block >= B_water && block < B_water + 8) ||
+        (block >= B_lava && block < B_lava + 4)) 
     {
-        return isPassableBlock(block);
+        return 0;
     }
-    return 0;
+    return isPassableBlock(block);
 }
 
 // Checks whether the given block can be replaced by another block
