@@ -356,7 +356,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           uint8_t b_top = getBlockAt(mob_x, mob_y + 1, mob_z);
           while (mob_y < 255) {
             if ( // Solid block below, non-solid(spawnable) at feet and above
-              !IsPassableBlock(b_low) &&
+              !isPassableBlock(b_low) &&
               isPassableSpawnBlock(b_mid) &&
               isPassableSpawnBlock(b_top)
             ) break;
