@@ -638,7 +638,7 @@ uint8_t isPassableBlock (uint8_t block) {
   );
 }
 // Checks whether the given block is non-solid and spawnable
-uint8_t IsPassableBlockNotSpawnable(uint8_t block) {
+uint8_t isPassableSpawnBlock (uint8_t block) {
     if ((block >= B_water && block < B_water + 8) ||
         (block >= B_lava && block < B_lava + 4)) 
     {
