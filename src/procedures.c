@@ -638,6 +638,17 @@ uint8_t isPassableBlock (uint8_t block) {
   );
 }
 
+// Checks whether the given block is non-solid and spawnable
+uint8_t IsPassableBlockForSpawn(uint8_t block) {
+    return (
+        block == B_air ||
+        block == B_snow ||
+        block == B_moss_carpet ||
+        block == B_short_grass ||
+        block == B_dead_bush ||
+        block == B_torch
+    );
+}
 // Checks whether the given block can be replaced by another block
 uint8_t isReplaceableBlock (uint8_t block) {
   return (
