@@ -36,7 +36,8 @@ prepare_notchian_dir() {
 dump_registries() {
   if [[ ! -f "$SERVER_JAR" ]]; then
     echo "No server.jar found (looked for $SERVER_JAR)."
-	echo "Please download the server.jar from https://www.minecraft.net/en-us/download/server and place it in the notchain directory."
+	echo "Please download the server.jar from https://www.minecraft.net/en-us/download/server"
+	echo "and place it in the notchian directory."
     exit 1
   fi
 
