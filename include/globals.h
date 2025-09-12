@@ -144,7 +144,7 @@
 #define DEV_LOG_LENGTH_DISCREPANCY
 
 // If defined, log chunk generation events
-#define DEV_LOG_CHUNK_GENERATION
+// #define DEV_LOG_CHUNK_GENERATION
 
 // If defined, allows dumping world data by sending 0xBEEF (big-endian),
 // and uploading world data by sending 0xFEED, followed by the data buffer.
@@ -176,8 +176,8 @@ extern uint16_t client_count;
 
 typedef struct {
   short x;
-  uint8_t y;
   short z;
+  uint8_t y;
   uint8_t block;
 } BlockChange;
 
