@@ -172,14 +172,14 @@ extern uint8_t motd_len;
 
 extern uint16_t client_count;
 
-#pragma pack(push, 1)
-
 typedef struct {
   short x;
   short z;
   uint8_t y;
   uint8_t block;
 } BlockChange;
+
+#pragma pack(push, 1)
 
 typedef struct {
   uint8_t uuid[16];
