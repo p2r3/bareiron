@@ -41,3 +41,94 @@ Alternatively, if you can't set up a file system, you can dump and upload world 
 ## Contribution
 - Create issues and discuss with the maintainer(s) before making pull requests.
 - Follow the existing code style. Ensure that your changes fit in with the surrounding code, even if you disagree with the style. Pull requests with inconsistent style will be nitpicked.
+
+## How to run the server on Debian and Ubuntu
+
+Case n°1 - You simply want to run the server temporarily on a Debian / Ubuntu remove server
+
+Apps required :
+
+- wget ( `sudo apt install wget` )
+
+Commands you will have to use :
+
+1 - Download the bareiron file
+
+- `wget https://github.com/p2r3/bareiron/releases/download/latest/bareiron.exe` ( will download the bareiron.exe file inside the folder where you currently are )
+
+2 - Grant your Debian / Ubuntu device the permissions to run the bareiron.exe file
+
+- `chmod +x ./bareiron.exe` ( will make the bareiron.exe file a file you can run on your Debian / Ubuntu device, only required after you downloaded the file, once it's done you don't have to do it anymore )
+
+3 - Run the bareiron.exe file :
+
+- `./bareiron.exe`
+
+
+Case n°2 - You want the minecraft server to run on Debian / Ubuntu startup :
+
+Apps required :
+
+- wget ( `sudo apt install wget` )
+- nano ( `sudo apt install nano` )
+
+Commands you will have to use :
+
+1 - Create the service file into the systemd system folder
+
+- `nano /etc/systemd/system/mc-server.service`
+
+2 - Write the service file content ( you can use the one i made )
+
+Paste the following :
+`[Unit]
+Description=Minecraft Server
+After=network.target
+
+[Service]
+ExecStart=chmod +x /home/bareiron.exe && /home/bareiron.exe
+Restart=always
+WorkingDirectory=/home/
+
+[Install]
+WantedBy=multi-user.target`
+
+3 - Grant your Debian / Ubuntu device the permissions to run the bareiron.exe file
+
+- `chmod +x ./mc-server.service`
+
+4 - Start the service
+
+- `sudo systemctl start mc-server.service`
+
+5 - Verify if the minecraft server is started successfully
+
+- `sudo systemctl status mc-server.service`
+
+Once you have verified than your Minecraft server is successfully running and isn't throwing errors, use CTRL + C on your computer to leave the logs of the service or directly close the console
+
+
+Case n°3 - You want to build the Minecraft server by yourself :
+
+Apps required :
+
+- git ( `sudo apt install git` )
+- gcc ( `sudo apt install gcc` )
+
+Commands you will have to run :
+
+1 - Get all the repository files
+
+- `git clone https://github.com/p2r3/bareiron.git`
+
+2 - Get into the bareiron folder
+
+- `cd ./bareiron`
+
+3 - Grant your Debian / Ubuntu device the permissions to run the build.sh file
+
+- `chmod +x ./build.sh`
+
+4 - Run the build.sh file
+
+- `./build.sh`
