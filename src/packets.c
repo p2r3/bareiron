@@ -63,7 +63,8 @@ int cs_loginStart (int client_fd, uint8_t *uuid, char *name) {
 
   readString(client_fd);
   if (recv_count == -1) return 1;
-  memcpy(name, recv_buffer, strlen((char *)recv_buffer) + 1);
+  strncpy(name, (char *)recv_buffer, 16 - 1);
+  name[16 - 1] = '\0';
   printf("  Player name: %s\n", name);
   recv_count = recv_all(client_fd, recv_buffer, 16, false);
   if (recv_count == -1) return 1;
