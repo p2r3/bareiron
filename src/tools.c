@@ -21,14 +21,16 @@
 #include "procedures.h"
 #include "tools.h"
 
-static uint64_t htonll (uint64_t value) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-  return ((uint64_t)htonl((uint32_t)(value >> 32))) |
-         ((uint64_t)htonl((uint32_t)(value & 0xFFFFFFFF)) << 32);
-#else
-  return value;
+#ifndef htonll
+  static uint64_t htonll (uint64_t value) {
+  #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    return ((uint64_t)htonl((uint32_t)(value >> 32))) |
+           ((uint64_t)htonl((uint32_t)(value & 0xFFFFFFFF)) << 32);
+  #else
+    return value;
+  #endif
+  }
 #endif
-}
 
 // Keep track of the total amount of bytes received with recv_all
 // Helps notice misread packets and clean up after errors
