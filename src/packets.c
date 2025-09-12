@@ -157,6 +157,24 @@ int cs_pluginMessage (int client_fd) {
   return 0;
 }
 
+// S->C Clientbound Plugin Message
+int sc_pluginMessage (int client_fd) {
+  printf("Sending Server's brand...\n\n");
+  const char channel[] = "minecraft:brand";
+  const int channel_length = (int)strlen(channel);
+
+  writeVarInt(client_fd, 1 + sizeVarInt(channel_length) + channel_length + sizeVarInt(brand_len) + brand_len);
+  writeVarInt(client_fd, 0x01);
+
+  writeVarInt(client_fd, channel_length);
+  send_all(client_fd, channel, channel_length);
+
+  writeVarInt(client_fd, brand_len);
+  send_all(client_fd, brand, brand_len);
+
+  return 0;
+}
+
 // S->C Finish Configuration
 int sc_finishConfiguration (int client_fd) {
   writeVarInt(client_fd, 1);
@@ -166,7 +184,6 @@ int sc_finishConfiguration (int client_fd) {
 
 // S->C Login (play)
 int sc_loginPlay (int client_fd) {
-
   writeVarInt(client_fd, 47 + sizeVarInt(MAX_PLAYERS) + sizeVarInt(VIEW_DISTANCE) * 2);
   writeByte(client_fd, 0x2B);
   // entity id

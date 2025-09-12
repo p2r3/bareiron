@@ -102,7 +102,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       break;
 
     case 0x02:
-      if (state == STATE_CONFIGURATION) cs_pluginMessage(client_fd);
+      if (state == STATE_CONFIGURATION) {
+        cs_pluginMessage(client_fd);
+        sc_pluginMessage(client_fd); // send server brand
+      }
       break;
 
     case 0x03:

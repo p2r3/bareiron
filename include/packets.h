@@ -26,6 +26,7 @@ int cs_playerCommand (int client_fd);
 int sc_statusResponse (int client_fd);
 int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name);
 int sc_knownPacks (int client_fd);
+int sc_pluginMessage (int client_fd);
 int sc_finishConfiguration (int client_fd);
 int sc_loginPlay (int client_fd);
 int sc_synchronizePlayerPosition (int client_fd, double x, double y, double z, float yaw, float pitch);

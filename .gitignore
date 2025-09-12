@@ -4,3 +4,5 @@ bareiron
 src/registries.c
 include/registries.h
 *.bin
+.idea/
+cmake-build-debug/

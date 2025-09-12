@@ -35,6 +35,9 @@ uint32_t server_ticks = 0;
 char motd[] = { "A bareiron server" };
 uint8_t motd_len = sizeof(motd) - 1;
 
+char brand[] = { "bareiron" };
+uint8_t brand_len = sizeof(brand) - 1;
+
 uint16_t client_count;
 
 BlockChange block_changes[MAX_BLOCK_CHANGES];
