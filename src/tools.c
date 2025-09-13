@@ -235,3 +235,32 @@ int64_t get_program_time () {
   return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
 }
 #endif
+
+
+// For better cache locality, block changes are sorted based first on chunk anchors, then on coordinates
+int compareBlockChanges(const void *a, const void *b) {
+  const BlockChange *blockA = (const BlockChange *)a;
+  const BlockChange *blockB = (const BlockChange *)b;
+  short anchor_ax = blockA->x / CHUNK_SIZE;
+  short anchor_az = blockA->z / CHUNK_SIZE;
+  short anchor_bx = blockB->x / CHUNK_SIZE;
+  short anchor_bz = blockB->z / CHUNK_SIZE;
+  if (anchor_ax != anchor_bx) return anchor_ax - anchor_bx;
+  if (anchor_az != anchor_bz) return anchor_az - anchor_bz;
+  if (blockA->x != blockB->x) return blockA->x - blockB->x;
+  if (blockA->z != blockB->z) return blockA->z - blockB->z;
+  return blockA->y - blockB->y;
+}
+
+// TODO: this is problematic since ChestSlot is 3-byte aligned, and may cause issues on some platforms
+ChestSlot *getChestByIndex(uint8_t index) {
+  if (index >= chest_count) return NULL;
+  // Each chest has 27 slots, each slot is 3 bytes (2 for item, 1 for count)
+  // Chests are stored at the end of block_changes array
+  // Calculate the pointer to the first chest contents struct
+  // First find end pointer of block_changes
+  uint8_t *ptr = (uint8_t *)(block_changes + MAX_BLOCK_CHANGES);
+  // Then calculate the start pointer
+  ptr -= (chest_count - index) * 27;
+  return (ChestSlot *)ptr;
+}

@@ -179,6 +179,11 @@ typedef struct {
   uint8_t block;
 } BlockChange;
 
+typedef struct {
+  uint16_t item;
+  uint8_t count;
+} ChestSlot;
+
 #pragma pack(push, 1)
 
 typedef struct {
@@ -236,6 +241,7 @@ typedef struct {
 
 extern BlockChange block_changes[MAX_BLOCK_CHANGES];
 extern int block_changes_count;
+extern int chest_count;
 
 extern PlayerData player_data[MAX_PLAYERS];
 extern int player_data_count;

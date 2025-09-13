@@ -6,6 +6,6 @@ if [ ! -f "include/registries.h" ]; then
   exit 1
 fi
 
-rm bareiron
+rm -f bareiron
 gcc src/*.c -O3 -Iinclude -o bareiron
 ./bareiron

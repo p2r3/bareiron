@@ -500,10 +500,11 @@ int main () {
   for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
   printf("\n\n");
 
-  // Initialize block changes entries as unallocated
-  for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
-    block_changes[i].block = 0xFF;
-  }
+  // Removing the convention of 0xFF as "unallocated" block ID
+  // // Initialize block changes entries as unallocated
+  // for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
+  //   block_changes[i].block = 0xFF;
+  // }
 
   // Start the disk/flash serializer (if applicable)
   if (initSerializer()) exit(EXIT_FAILURE);
@@ -607,6 +608,7 @@ int main () {
     }
 
     // Handle 0xBEEF and 0xFEED packets for dumping/uploading world data
+    // TODO: Handle sorted block changes here too
     #ifdef DEV_ENABLE_BEEF_DUMPS
     // Received BEEF packet, dump world data and disconnect
     if (recv_buffer[0] == 0xBE && recv_buffer[1] == 0xEF && getClientState(client_fd) == STATE_NONE) {

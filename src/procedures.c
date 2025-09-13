@@ -330,7 +330,15 @@ void spawnPlayer (PlayerData *player) {
 
 }
 
+
 uint8_t getBlockChange (short x, uint8_t y, short z) {
+  BlockChange *block_change = (BlockChange *) bsearch(
+    &(BlockChange){ .x = x, .y = y, .z = z },
+    block_changes,
+    block_changes_count,
+    sizeof(BlockChange),
+    compareBlockChanges
+  );
   for (int i = 0; i < block_changes_count; i ++) {
     if (block_changes[i].block == 0xFF) continue;
     if (
@@ -1102,9 +1110,14 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     else if (target == B_chest) {
       // Get a pointer to the entry following this chest in block_changes
       uint8_t *storage_ptr = NULL;
+      uint8_t chest_index = 0;
       for (int i = 0; i < block_changes_count; i ++) {
         if (block_changes[i].block != B_chest) continue;
-        if (block_changes[i].x != x || block_changes[i].y != y || block_changes[i].z != z) continue;
+        if (block_changes[i].x != x || block_changes[i].y != y || block_changes[i].z != z) {
+          chest_index++;
+          continue;
+        }
+        // TODO: set storage_ptr to the new chest location in the array
         storage_ptr = (uint8_t *)(&block_changes[i + 1]);
         break;
       }
@@ -1121,11 +1134,10 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
       // This is a similarly dubious memcpy hack, but at least we're not
       // mixing data types? Kind of?
       for (int i = 0; i < 27; i ++) {
-        uint16_t item;
-        uint8_t count;
-        memcpy(&item, storage_ptr + i * 3, 2);
-        memcpy(&count, storage_ptr + i * 3 + 2, 1);
-        sc_setContainerSlot(player->client_fd, 2, i, count, item);
+        ChestSlot slot;
+        memcpy(&slot.item, storage_ptr + i * 3, 2);
+        memcpy(&slot.count, storage_ptr + i * 3 + 2, 1);
+        sc_setContainerSlot(player->client_fd, 2, i, slot.count, slot.item);
       }
       return;
     }
