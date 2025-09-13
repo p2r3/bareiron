@@ -85,7 +85,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (cs_clientInformation(client_fd)) break;
         if (sc_knownPacks(client_fd)) break;
         if (sc_registries(client_fd)) break;
-        if (sc_pluginMessage(client_fd)) break; // send server brand
+
+        #ifdef SEND_BRAND
+        if (sc_pluginMessage(client_fd)) break;
+        #endif
       }
       break;
 

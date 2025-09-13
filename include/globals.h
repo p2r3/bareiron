@@ -29,7 +29,7 @@
 #define MOB_DESPAWN_DISTANCE 256
 
 // Server game mode: 0 - survival; 1 - creative; 2 - adventure; 3 - spectator
-#define GAMEMODE 1
+#define GAMEMODE 0
 
 // Max render distance, determines how many chunks to send
 #define VIEW_DISTANCE 2
