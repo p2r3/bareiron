@@ -135,13 +135,19 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           sc_spawnEntityPlayer(client_fd, player_data[i]);
         }
 
-        // Send information about all other entities (mobs)
-        // For more info on the arguments, see the spawnMob function
+        // Send information about all other entities (mobs):
+        // Use a random number for the first half of the UUID
+        uint8_t uuid[16];
+        uint32_t r = fast_rand();
+        memcpy(uuid, &r, 4);
+        // Send allocated living mobs, use ID for second half of UUID
         for (int i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
           if ((mob_data[i].data & 31) == 0) continue;
+          memcpy(uuid + 4, &i, 4);
+          // For more info on the arguments here, see the spawnMob function
           sc_spawnEntity(
-            client_fd, -2 - i, recv_buffer,
+            client_fd, -2 - i, uuid,
             mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,
             0, 0
           );
