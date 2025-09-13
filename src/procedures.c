@@ -446,7 +446,21 @@ uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       }
       #endif
       if (is_base_block) block_changes[i].block = 0xFF;
-      else block_changes[i].block = block;
+      else {
+        #ifdef ALLOW_CHESTS
+        // When placing chests, just unallocate the target block and fall
+        // through to the chest-specific routine below.
+        if (block == B_chest) {
+          block_changes[i].block = 0xFF;
+          if (first_gap > i) first_gap = i;
+          #ifndef DISK_SYNC_BLOCKS_ON_INTERVAL
+          writeBlockChangesToDisk(i, i);
+          #endif
+          break;
+        }
+        #endif
+        block_changes[i].block = block;
+      }
       #ifndef DISK_SYNC_BLOCKS_ON_INTERVAL
       writeBlockChangesToDisk(i, i);
       #endif
