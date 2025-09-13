@@ -18,7 +18,7 @@ windows_linker=""
 unameOut="$(uname -s)"
 case "$unameOut" in
   MINGW64_NT*)
-    windows_linker="-lws2_32 -pthread"
+    windows_linker="-static -lws2_32 -pthread"
     ;;
 esac
 
