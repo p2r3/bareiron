@@ -1,6 +1,7 @@
 #ifndef H_PACKETS
 #define H_PACKETS
-
+#include <stdint.h>
+#include "globals.h"
 // Serverbound packets
 int cs_handshake (int client_fd);
 int cs_loginStart (int client_fd, uint8_t *uuid, char *name);
@@ -26,7 +27,6 @@ int cs_playerCommand (int client_fd);
 int sc_statusResponse (int client_fd);
 int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name);
 int sc_knownPacks (int client_fd);
-int sc_sendPluginMessage (int client_fd, const char *channel, const uint8_t *data, size_t data_len);
 int sc_finishConfiguration (int client_fd);
 int sc_loginPlay (int client_fd);
 int sc_synchronizePlayerPosition (int client_fd, double x, double y, double z, float yaw, float pitch);
