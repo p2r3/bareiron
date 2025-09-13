@@ -1,5 +1,10 @@
 #include <stdint.h>
+#ifdef _WIN32
+#include <Winsock2.h>
+#endif
+#ifdef linux
 #include <arpa/inet.h>
+#endif
 #include <unistd.h>
 
 #include "varnum.h"

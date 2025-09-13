@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdio.h>
-
+#include <stdint.h>
 #include "globals.h"
 #include "registries.h"
 #include "tools.h"

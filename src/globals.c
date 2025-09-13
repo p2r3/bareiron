@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
+#ifdef _WIN32
+#include <Winsock2.h>
+#endif
+#ifdef linux
 #include <arpa/inet.h>
+#endif
 #include <unistd.h>
 
 #include "globals.h"
@@ -34,11 +39,6 @@ uint32_t server_ticks = 0;
 
 char motd[] = { "A bareiron server" };
 uint8_t motd_len = sizeof(motd) - 1;
-
-#ifdef SEND_BRAND
-  char brand[] = { "bareiron" };
-  uint8_t brand_len = sizeof(brand) - 1;
-#endif
 
 uint16_t client_count;
 

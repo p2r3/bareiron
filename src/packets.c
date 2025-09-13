@@ -1,12 +1,17 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <stdint.h>
 #ifdef ESP_PLATFORM
   #include "lwip/sockets.h"
   #include "lwip/netdb.h"
   #include "esp_task_wdt.h"
 #else
+  #ifdef _WIN32
+  #include <Winsock2.h>
+  #endif
+  #ifdef linux
   #include <arpa/inet.h>
+  #endif
   #include <unistd.h>
 #endif
 
@@ -63,8 +68,7 @@ int cs_loginStart (int client_fd, uint8_t *uuid, char *name) {
 
   readString(client_fd);
   if (recv_count == -1) return 1;
-  strncpy(name, (char *)recv_buffer, 16 - 1);
-  name[16 - 1] = '\0';
+  memcpy(name, recv_buffer, strlen((char *)recv_buffer) + 1);
   printf("  Player name: %s\n", name);
   recv_count = recv_all(client_fd, recv_buffer, 16, false);
   if (recv_count == -1) return 1;
@@ -154,23 +158,6 @@ int cs_pluginMessage (int client_fd) {
     printf("  Brand: \"%s\"\n", recv_buffer);
   }
   printf("\n");
-  return 0;
-}
-
-// S->C Clientbound Plugin Message
-int sc_sendPluginMessage (int client_fd, const char *channel, const uint8_t *data, size_t data_len) {
-  printf("Sending Plugin Message\n\n");
-  int channel_len = (int)strlen(channel);
-
-  writeVarInt(client_fd, 1 + sizeVarInt(channel_len) + channel_len + sizeVarInt(data_len) + data_len);
-  writeByte(client_fd, 0x01);
-
-  writeVarInt(client_fd, channel_len);
-  send_all(client_fd, channel, channel_len);
-
-  writeVarInt(client_fd, data_len);
-  send_all(client_fd, data, data_len);
-
   return 0;
 }
 

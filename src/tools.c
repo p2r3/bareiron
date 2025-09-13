@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 
@@ -7,8 +8,14 @@
   #include "lwip/netdb.h"
   #include "esp_timer.h"
 #else
+  #ifdef _WIN32
+  #include <Winsock2.h>
+  #include <ws2tcpip.h>
+  #endif
+  #ifdef linux
   #include <sys/socket.h>
   #include <arpa/inet.h>
+  #endif
   #include <unistd.h>
   #include <time.h>
   #ifndef CLOCK_MONOTONIC
@@ -95,7 +102,7 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
 
   // Busy-wait (with task yielding) until all data has been sent
   while (sent < len) {
-    ssize_t n = send(client_fd, p + sent, len - sent, MSG_NOSIGNAL);
+    ssize_t n = send(client_fd, p + sent, len - sent, 0); // 0 for windows compat
     if (n > 0) { // some data was sent, log it
       sent += n;
       last_update_time = get_program_time();
@@ -224,14 +231,27 @@ uint64_t splitmix64 (uint64_t state) {
   return z ^ (z >> 31);
 }
 
-#ifndef ESP_PLATFORM
-// Returns system time in microseconds.
-// On ESP-IDF, this is available in "esp_timer.h", and returns time *since
-// the start of the program*, and NOT wall clock time. To ensure
-// compatibility, this should only be used to measure time intervals.
-int64_t get_program_time () {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
+#ifdef ESP_PLATFORM
+#include "esp_timer.h"
+#define get_program_time esp_timer_get_time
+#elif _WIN32
+#include <windows.h>
+int64_t get_program_time() {
+    static LARGE_INTEGER freq;
+    static int initialized = 0;
+    if (!initialized) {
+        QueryPerformanceFrequency(&freq);
+        initialized = 1;
+    }
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    return (int64_t)((now.QuadPart * 1000000) / freq.QuadPart);
+}
+#else
+#include <time.h>
+int64_t get_program_time() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
 }
 #endif

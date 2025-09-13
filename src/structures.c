@@ -5,6 +5,7 @@
 #include "worldgen.h"
 #include "procedures.h"
 #include "structures.h"
+#include <stdint.h>
 
 void setBlockIfReplaceable (short x, uint8_t y, short z, uint8_t block) {
   uint8_t target = getBlockAt(x, y, z);

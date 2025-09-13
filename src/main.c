@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -19,9 +20,16 @@
   #include "lwip/netdb.h"
 #else
   #include <sys/types.h>
+  #ifdef _WIN32
+  #include <Winsock2.h>
+  #include <ws2tcpip.h>
+  
+  #endif
+  #ifdef linux
   #include <sys/socket.h>
   #include <netinet/in.h>
   #include <arpa/inet.h>
+  #endif
   #include <unistd.h>
   #include <time.h>
 #endif
@@ -60,6 +68,8 @@
  * Why have I not done this yet? Well, I'm close to uploading the video,
  * and I don't want to risk refactoring anything this close to release.
  */
+
+
 void handlePacket (int client_fd, int length, int packet_id, int state) {
 
   // Count the amount of bytes received to catch length discrepancies
@@ -85,10 +95,6 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (cs_clientInformation(client_fd)) break;
         if (sc_knownPacks(client_fd)) break;
         if (sc_registries(client_fd)) break;
-
-        #ifdef SEND_BRAND
-        if (sc_sendPluginMessage(client_fd, "minecraft:brand", brand, brand_len)) break;
-        #endif
       }
       break;
 
@@ -219,7 +225,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         // Handle fall damage
         if (on_ground) {
           int16_t damage = player->grounded_y - player->y - 3;
-          if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2)) {
+          if (damage > 0) {
             uint8_t block_feet = getBlockAt(player->x, player->y, player->z);
             if (block_feet < B_water || block_feet > B_water + 7) {
               hurtEntity(client_fd, -1, D_fall, damage);
@@ -359,10 +365,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           uint8_t b_mid = getBlockAt(mob_x, mob_y, mob_z);
           uint8_t b_top = getBlockAt(mob_x, mob_y + 1, mob_z);
           while (mob_y < 255) {
-            if ( // Solid block below, non-solid(spawnable) at feet and above
+            if ( // Solid block below, non-solid at feet and above
               !isPassableBlock(b_low) &&
-              isPassableSpawnBlock(b_mid) &&
-              isPassableSpawnBlock(b_top)
+              isPassableBlock(b_mid) &&
+              isPassableBlock(b_top)
             ) break;
             b_low = b_mid;
             b_mid = b_top;
@@ -431,14 +437,13 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       if (state == STATE_PLAY) cs_playerInput(client_fd);
       break;
 
-    case 0x2B: { // Player Loaded
+    case 0x2B: // Player Loaded
       PlayerData *player;
       if (getPlayerData(client_fd, &player)) break;
       // Clear "client loading" flag and fallback timer
       player->flags &= ~0x20;
       player->flagval_16 = 0;
       break;
-    }
 
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
@@ -493,7 +498,14 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 }
 
 int main () {
-
+  #ifdef _WIN32
+  WSADATA wsaData;
+  int wsaInit = WSAStartup(MAKEWORD(2,2), &wsaData);
+  if (wsaInit != 0) {
+    fprintf(stderr, "WSAStartup failed: %d\n", wsaInit);
+    exit(EXIT_FAILURE);
+  }
+#endif
   // Hash the seeds to ensure they're random enough
   world_seed = splitmix64(world_seed);
   printf("World seed (hashed): ");
@@ -531,10 +543,21 @@ int main () {
     exit(EXIT_FAILURE);
   }
 
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-    perror("socket options failed");
+  #ifdef _WIN32
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(opt)) == SOCKET_ERROR) {
+    fprintf(stderr, "setsockopt failed: %d\n", WSAGetLastError());
+    closesocket(server_fd);
+    WSACleanup();
     exit(EXIT_FAILURE);
   }
+  #else
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    perror("setsockopt failed");
+    close(server_fd);
+    exit(EXIT_FAILURE);
+  }
+  #endif
+
 
   // Bind socket to IP/port
   server_addr.sin_family = AF_INET;
@@ -557,8 +580,10 @@ int main () {
 
   // Make the socket non-blocking
   // This is necessary to not starve the idle task during slow connections
-  int flags = fcntl(server_fd, F_GETFL, 0);
-  fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
+  #ifndef _WIN32
+  int flags = fcntl(server_fd, 0, F_GETFL);
+  fcntl(server_fd, F_SETFL, flags | 0);
+  #endif
 
   // Track time of last server tick (in microseconds)
   int64_t last_tick_time = get_program_time();
@@ -579,8 +604,10 @@ int main () {
       // If the accept was successful, make the client non-blocking too
       if (clients[i] != -1) {
         printf("New client, fd: %d\n", clients[i]);
-        int flags = fcntl(clients[i], F_GETFL, 0);
-        fcntl(clients[i], F_SETFL, flags | O_NONBLOCK);
+        #ifndef _WIN32
+        int flags = fcntl(clients[i], 0, 0);
+        fcntl(clients[i], 1, flags | 0);
+        #endif
         client_count ++;
       }
       break;
@@ -602,7 +629,7 @@ int main () {
     int client_fd = clients[client_index];
 
     // Check if at least 2 bytes are available for reading
-    recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
+    recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
     if (recv_count < 2) {
       if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
         disconnectClient(&clients[client_index], 1);
