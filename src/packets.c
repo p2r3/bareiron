@@ -163,7 +163,7 @@ int sc_sendPluginMessage (int client_fd, const char *channel, const uint8_t *dat
   int channel_len = (int)strlen(channel);
 
   writeVarInt(client_fd, 1 + sizeVarInt(channel_len) + channel_len + sizeVarInt(data_len) + data_len);
-  writeVarInt(client_fd, 0x01);
+  writeByte(client_fd, 0x01);
 
   writeVarInt(client_fd, channel_len);
   send_all(client_fd, channel, channel_len);
