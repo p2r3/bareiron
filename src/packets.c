@@ -183,6 +183,7 @@ int sc_finishConfiguration (int client_fd) {
 
 // S->C Login (play)
 int sc_loginPlay (int client_fd) {
+
   writeVarInt(client_fd, 47 + sizeVarInt(MAX_PLAYERS) + sizeVarInt(VIEW_DISTANCE) * 2);
   writeByte(client_fd, 0x2B);
   // entity id
