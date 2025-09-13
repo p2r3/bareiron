@@ -29,7 +29,7 @@
 #define MOB_DESPAWN_DISTANCE 256
 
 // Server game mode: 0 - survival; 1 - creative; 2 - adventure; 3 - spectator
-#define GAMEMODE 0
+#define GAMEMODE 1
 
 // Max render distance, determines how many chunks to send
 #define VIEW_DISTANCE 2
@@ -101,6 +101,10 @@
 // timing out. Default is 15s, which leaves 5s to prevent starving other
 // clients from Keep Alive packets.
 #define NETWORK_TIMEOUT_TIME 15000000
+
+// If defined, sends the server brand to clients. Doesn't do much, but will show up in the top-left of the F3/debug menu, in the Minecraft client.
+// You can change the brand string in the "brand" variable in src/globals.c
+#define SEND_BRAND
 
 // If defined, rebroadcasts ALL incoming movement updates, disconnecting
 // movement from the server's tickrate. This makes movement much smoother
