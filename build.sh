@@ -13,6 +13,15 @@ case "$OSTYPE" in
   *) exe="" ;;
 esac
 
+# mingw64-specific linker options
+windows_linker=""
+unameOut="$(uname -s)"
+case "$unameOut" in
+  MINGW64_NT*)
+    windows_linker="-lws2_32 -pthread"
+    ;;
+esac
+
 rm -f "bareiron$exe"
-gcc src/*.c -O3 -Iinclude -o "bareiron$exe"
+gcc src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
 "./bareiron$exe"
