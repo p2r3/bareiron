@@ -19,9 +19,14 @@
   #include "lwip/netdb.h"
 #else
   #include <sys/types.h>
-  #include <sys/socket.h>
-  #include <netinet/in.h>
-  #include <arpa/inet.h>
+  #ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+  #else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+  #endif
   #include <unistd.h>
   #include <time.h>
 #endif
@@ -479,6 +484,13 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 }
 
 int main () {
+  #ifdef _WIN32 //initialize windows socket
+    WSADATA wsa;
+      if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        fprintf(stderr, "WSAStartup failed\n");
+        exit(EXIT_FAILURE);
+      }
+  #endif
 
   // Hash the seeds to ensure they're random enough
   world_seed = splitmix64(world_seed);
@@ -516,8 +528,12 @@ int main () {
     perror("socket failed");
     exit(EXIT_FAILURE);
   }
-
+#ifdef _WIN32
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
+      (const char*)&opt, sizeof(opt)) < 0) {
+#else
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+#endif    
     perror("socket options failed");
     exit(EXIT_FAILURE);
   }
@@ -543,8 +559,16 @@ int main () {
 
   // Make the socket non-blocking
   // This is necessary to not starve the idle task during slow connections
+  #ifdef _WIN32
+    u_long mode = 1;  // 1 = non-blocking
+    if (ioctlsocket(server_fd, FIONBIO, &mode) != 0) {
+      fprintf(stderr, "Failed to set non-blocking mode\n");
+      exit(EXIT_FAILURE);
+    }
+  #else
   int flags = fcntl(server_fd, F_GETFL, 0);
   fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
+  #endif
 
   // Track time of last server tick (in microseconds)
   int64_t last_tick_time = get_program_time();
@@ -565,8 +589,13 @@ int main () {
       // If the accept was successful, make the client non-blocking too
       if (clients[i] != -1) {
         printf("New client, fd: %d\n", clients[i]);
+      #ifdef _WIN32
+        u_long mode = 1;
+        ioctlsocket(clients[i], FIONBIO, &mode);
+      #else
         int flags = fcntl(clients[i], F_GETFL, 0);
         fcntl(clients[i], F_SETFL, flags | O_NONBLOCK);
+      #endif
         client_count ++;
       }
       break;
@@ -588,6 +617,23 @@ int main () {
     int client_fd = clients[client_index];
 
     // Check if at least 2 bytes are available for reading
+    #ifdef _WIN32
+    recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
+    if (recv_count == 0) {
+        disconnectClient(&clients[client_index], 1);
+        continue;
+    }
+    if (recv_count == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK) {
+            continue; // no data yet, keep client alive
+        }
+        else {
+            disconnectClient(&clients[client_index], 1);
+            continue;
+        }
+    }
+    #else
     recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
     if (recv_count < 2) {
       if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
@@ -595,7 +641,7 @@ int main () {
       }
       continue;
     }
-
+    #endif
     // Handle 0xBEEF and 0xFEED packets for dumping/uploading world data
     #ifdef DEV_ENABLE_BEEF_DUMPS
     // Received BEEF packet, dump world data and disconnect
@@ -662,6 +708,11 @@ int main () {
   }
 
   close(server_fd);
+ 
+  #ifdef _WIN32 //cleanup windows socket
+    WSACleanup();
+  #endif
+
   printf("Server closed.\n");
 
 }
