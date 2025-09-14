@@ -22,6 +22,19 @@ case "$unameOut" in
     ;;
 esac
 
+# Default compiler
+compiler="gcc"
+
+# Handle arguments for windows 9x build
+for arg in "$@"; do
+  case $arg in
+    --9x)
+      compiler="/opt/bin/i686-w64-mingw32-gcc"
+      windows_linker="$windows_linker -Wl,--subsystem,console:4"
+      ;;
+  esac
+done
+
 rm -f "bareiron$exe"
-gcc src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
+$compiler src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
 "./bareiron$exe"
