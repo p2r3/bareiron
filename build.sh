@@ -29,8 +29,13 @@ compiler="gcc"
 for arg in "$@"; do
   case $arg in
     --9x)
-      compiler="/opt/bin/i686-w64-mingw32-gcc"
-      windows_linker="$windows_linker -Wl,--subsystem,console:4"
+      if [[ "$unameOut" == MINGW64_NT* ]]; then
+        compiler="/opt/bin/i686-w64-mingw32-gcc"
+        windows_linker="$windows_linker -Wl,--subsystem,console:4"
+      else
+        echo "Error: Building for Windows 9x is only supported when running under MinGW64."
+        exit 1
+      fi
       ;;
   esac
 done
