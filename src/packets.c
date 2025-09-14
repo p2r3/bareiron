@@ -764,6 +764,10 @@ int cs_setPlayerMovementFlags (int client_fd, uint8_t *on_ground) {
 
   *on_ground = readByte(client_fd) & 0x01;
 
+  PlayerData *player;
+  if (!getPlayerData(client_fd, &player))
+    sendPlayerMetadataToAll(player);
+
   return 0;
 }
 
@@ -1197,6 +1201,8 @@ int cs_playerInput (int client_fd) {
   // Set or clear sneaking flag
   if (flags & 0x20) player->flags |= 0x04;
   else player->flags &= ~0x04;
+  
+  sendPlayerMetadataToAll(player);
 
   return 0;
 }
@@ -1214,6 +1220,8 @@ int cs_playerCommand (int client_fd) {
   // Handle sprinting
   if (action == 1) player->flags |= 0x08;
   else if (action == 2) player->flags &= ~0x08;
+
+  sendPlayerMetadataToAll(player);
 
   return 0;
 }

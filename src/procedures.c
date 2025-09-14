@@ -368,6 +368,42 @@ void spawnPlayer (PlayerData *player) {
 
 }
 
+void sendPlayerMetadataToAll (PlayerData *player) {
+  uint8_t sneaking = (player->flags & 0x04) != 0;
+  uint8_t sprinting = (player->flags & 0x08) != 0;
+
+  uint8_t bit_mask = 0;
+  if (sneaking) bit_mask |= 0x02;
+  if (sprinting) bit_mask |= 0x08;
+
+  int pose = 0;
+  if (sneaking) pose = 5;
+
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    PlayerData* other_player = &player_data[i];
+    int client_fd = other_player->client_fd;
+
+    if (client_fd == -1) continue;
+    if (client_fd == player->client_fd) continue;
+    if (other_player->flags & 0x20) continue;
+
+    writeVarInt(client_fd, 5 + sizeVarInt(player->client_fd) + sizeVarInt(0) + sizeVarInt(21) + sizeVarInt(pose));
+    writeByte(client_fd, 0x5C);
+
+    writeVarInt(client_fd, player->client_fd); // Entity ID
+
+    writeByte(client_fd, 0); // Index (Bit Mask)
+    writeVarInt(client_fd, 0); // Type (Byte)
+    writeByte(client_fd, bit_mask); // Value
+
+    writeByte(client_fd, 6); // Index (Pose)
+    writeVarInt(client_fd, 21); // Type (Pose)
+    writeVarInt(client_fd, pose); // Value
+
+    writeByte(client_fd, 0xFF); // End
+  }
+}
+
 uint8_t getBlockChange (short x, uint8_t y, short z) {
   for (int i = 0; i < block_changes_count; i ++) {
     if (block_changes[i].block == 0xFF) continue;
