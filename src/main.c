@@ -67,8 +67,9 @@
  */
 void handlePacket (int client_fd, int length, int packet_id, int state) {
 
-  // Count the amount of bytes received to catch length discrepancies
+  /* Count the amount of bytes received to catch length discrepancies */
   uint64_t bytes_received_start = total_bytes_received;
+  int i;
 
   switch (packet_id) {
 
@@ -98,13 +99,13 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       break;
 
     case 0x01:
-      // Handle status ping
+      /* Handle status ping */
       if (state == STATE_STATUS) {
-        // No need for a packet handler, just echo back the long verbatim
+        /* No need for a packet handler, just echo back the long verbatim */
         writeByte(client_fd, 9);
         writeByte(client_fd, 0x01);
         writeUint64(client_fd, readUint64(client_fd));
-        // Close connection after this
+        /* Close connection after this */
         recv_count = 0;
         return;
       }
@@ -121,36 +122,38 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       } else if (state == STATE_CONFIGURATION) {
         printf("Client Acknowledged Configuration\n\n");
 
-        // Enter client into "play" state
+        /* Enter client into "play" state */
         setClientState(client_fd, STATE_PLAY);
         sc_loginPlay(client_fd);
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
-        // Send full client spawn sequence
+        /* Send full client spawn sequence */
         spawnPlayer(player);
 
-        // Register all existing players and spawn their entities
-        for (int i = 0; i < MAX_PLAYERS; i ++) {
+        /* Register all existing players and spawn their entities */
+        for (i = 0; i < MAX_PLAYERS; i ++) {
           if (player_data[i].client_fd == -1) continue;
-          // Note that this will also filter out the joining player
+          /* Note that this will also filter out the joining player */
           if (player_data[i].flags & 0x20) continue;
           sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
           sc_spawnEntityPlayer(client_fd, player_data[i]);
         }
 
-        // Send information about all other entities (mobs):
-        // Use a random number for the first half of the UUID
+        /*
+	 * Send information about all other entities (mobs):
+         * Use a random number for the first half of the UUID
+	 */
         uint8_t uuid[16];
         uint32_t r = fast_rand();
         memcpy(uuid, &r, 4);
-        // Send allocated living mobs, use ID for second half of UUID
-        for (int i = 0; i < MAX_MOBS; i ++) {
+        /* Send allocated living mobs, use ID for second half of UUID */
+        for (i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
           if ((mob_data[i].data & 31) == 0) continue;
           memcpy(uuid + 4, &i, 4);
-          // For more info on the arguments here, see the spawnMob function
+          /* For more info on the arguments here, see the spawnMob function */
           sc_spawnEntity(
             client_fd, -2 - i, uuid,
             mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,
@@ -177,7 +180,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       if (state == STATE_PLAY) cs_clientStatus(client_fd);
       break;
 
-    case 0x0C: // Client tick (ignored)
+    case 0x0C: /* Client tick (ignored) */
       break;
 
     case 0x11:
@@ -190,7 +193,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 
     case 0x1B:
       if (state == STATE_PLAY) {
-        // Serverbound keep-alive (ignored)
+        /* Serverbound keep-alive (ignored) */
         recv_all(client_fd, recv_buffer, length, false);
       }
       break;
@@ -209,7 +212,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         float yaw, pitch;
         uint8_t on_ground;
 
-        // Read player position (and rotation)
+        /* Read player position (and rotation) */
         if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z, &on_ground);
         else if (packet_id == 0x1F) cs_setPlayerRotation (client_fd, &yaw, &pitch, &on_ground);
         else if (packet_id == 0x20) cs_setPlayerMovementFlags (client_fd, &on_ground);
@@ -221,7 +224,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         uint8_t block_feet = getBlockAt(player->x, player->y, player->z);
         uint8_t swimming = block_feet >= B_water && block_feet < B_water + 8;
 
-        // Handle fall damage
+        /* Handle fall damage */
         if (on_ground) {
           int16_t damage = player->grounded_y - player->y - 3;
           if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2) && !swimming) {
@@ -232,48 +235,52 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           player->grounded_y = player->y;
         }
 
-        // Don't continue if all we got were flags
+        /* Don't continue if all we got were flags */
         if (packet_id == 0x20) break;
 
-        // Update rotation in player data (if applicable)
+        /* Update rotation in player data (if applicable) */
         if (packet_id != 0x1D) {
           player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
           player->pitch = pitch / 90.0f * 127.0f;
         }
 
-        // Whether to broadcast player position to other players
+        /* Whether to broadcast player position to other players */
         uint8_t should_broadcast = true;
 
         #ifndef BROADCAST_ALL_MOVEMENT
-          // If applicable, tie movement updates to the tickrate by using
-          // a flag that gets reset on every tick. It might sound better
-          // to just make the tick handler broadcast position updates, but
-          // then we lose precision. While position is stored using integers,
-          // here the client gives us doubles and floats directly.
+          /*
+	   * If applicable, tie movement updates to the tickrate by using
+           * a flag that gets reset on every tick. It might sound better
+           * to just make the tick handler broadcast position updates, but
+           * then we lose precision. While position is stored using integers,
+           * here the client gives us doubles and floats directly.
+	   */
           should_broadcast = !(player->flags & 0x40);
           if (should_broadcast) player->flags |= 0x40;
         #endif
 
         #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
-          // If applicable, broadcast only every client_count-th movement update
+          /* If applicable, broadcast only every client_count-th movement update */
           if (++player->packets_since_update < client_count) {
             should_broadcast = false;
           } else {
-            // Note that this does not explicitly set should_broadcast to true
-            // This allows the above BROADCAST_ALL_MOVEMENT check to compound
-            // Whether that's ever favorable is up for debate
+            /*
+	     * Note that this does not explicitly set should_broadcast to true
+             * This allows the above BROADCAST_ALL_MOVEMENT check to compound
+             * Whether that's ever favorable is up for debate
+	     */
             player->packets_since_update = 0;
           }
         #endif
 
         if (should_broadcast) {
-          // If the packet had no rotation data, calculate it from player data
+          /* If the packet had no rotation data, calculate it from player data */
           if (packet_id == 0x1D) {
             yaw = player->yaw * 180 / 127;
             pitch = player->pitch * 90 / 127;
           }
-          // Send current position data to all connected players
-          for (int i = 0; i < MAX_PLAYERS; i ++) {
+          /* Send current position data to all connected players */
+          for (i = 0; i < MAX_PLAYERS; i ++) {
             if (player_data[i].client_fd == -1) continue;
             if (player_data[i].flags & 0x20) continue;
             if (player_data[i].client_fd == client_fd) continue;
@@ -286,15 +293,17 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           }
         }
 
-        // Don't continue if all we got was rotation data
+        /* Don't continue if all we got was rotation data */
         if (packet_id == 0x1F) break;
 
-        // Players send movement packets roughly 20 times per second when
-        // moving, and much less frequently when standing still. We can
-        // use this correlation between actions and packet count to cheaply
-        // simulate hunger with a timer-based system, where the timer ticks
-        // down with each position packet. The timer value itself then
-        // naturally works as a substitute for saturation.
+        /*
+	 * Players send movement packets roughly 20 times per second when
+         * moving, and much less frequently when standing still. We can
+         * use this correlation between actions and packet count to cheaply
+         * simulate hunger with a timer-based system, where the timer ticks
+         * down with each position packet. The timer value itself then
+         * naturally works as a substitute for saturation.
+	 */
         if (player->saturation == 0) {
           if (player->hunger > 0) player->hunger--;
           player->saturation = 200;
@@ -303,17 +312,17 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           player->saturation -= 1;
         }
 
-        // Cast the values to short to get integer position
+        /* Cast the values to short to get integer position */
         short cx = x, cy = y, cz = z;
         if (x < 0) cx -= 1;
         if (z < 0) cz -= 1;
-        // Determine the player's chunk coordinates
+        /* Determine the player's chunk coordinates */
         short _x = (cx < 0 ? cx - 16 : cx) / 16, _z = (cz < 0 ? cz - 16 : cz) / 16;
-        // Calculate distance between previous and current chunk coordinates
+        /* Calculate distance between previous and current chunk coordinates */
         short dx = _x - (player->x < 0 ? player->x - 16 : player->x) / 16;
         short dz = _z - (player->z < 0 ? player->z - 16 : player->z) / 16;
 
-        // Prevent players from leaving the world
+        /* Prevent players from leaving the world */
         if (cy < 0) {
           cy = 0;
           player->grounded_y = 0;
@@ -323,17 +332,17 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           sc_synchronizePlayerPosition(client_fd, cx, 255, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
         }
 
-        // Update position in player data
+        /* Update position in player data */
         player->x = cx;
         player->y = cy;
         player->z = cz;
 
-        // Exit early if no chunk borders were crossed
+        /* Exit early if no chunk borders were crossed */
         if (dx == 0 && dz == 0) break;
 
-        // Check if the player has recently been in this chunk
+        /* Check if the player has recently been in this chunk */
         int found = false;
-        for (int i = 0; i < VISITED_HISTORY; i ++) {
+        for (i = 0; i < VISITED_HISTORY; i ++) {
           if (player->visited_x[i] == _x && player->visited_z[i] == _z) {
             found = true;
             break;
@@ -341,8 +350,8 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         }
         if (found) break;
 
-        // Update player's recently visited chunks
-        for (int i = 0; i < VISITED_HISTORY - 1; i ++) {
+        /* Update player's recently visited chunks */
+        for (i = 0; i < VISITED_HISTORY - 1; i ++) {
           player->visited_x[i] = player->visited_x[i + 1];
           player->visited_z[i] = player->visited_z[i + 1];
         }
@@ -350,20 +359,24 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         player->visited_z[VISITED_HISTORY - 1] = _z;
 
         uint32_t r = fast_rand();
-        // One in every 4 new chunks spawns a mob
+        /* One in every 4 new chunks spawns a mob */
         if ((r & 3) == 0) {
-          // The mob is placed in the middle of the new chunk row,
-          // at a random position within the chunk
+          /*
+	   * The mob is placed in the middle of the new chunk row,
+           * at a random position within the chunk
+	   */
           short mob_x = (_x + dx * VIEW_DISTANCE) * 16 + ((r >> 4) & 15);
           short mob_z = (_z + dz * VIEW_DISTANCE) * 16 + ((r >> 8) & 15);
-          // Start at the Y coordinate of the spawning player and move upward
-          // until a valid space is found
+          /*
+	   * Start at the Y coordinate of the spawning player and move upward
+           * until a valid space is found
+	   */
           uint8_t mob_y = cy - 8;
           uint8_t b_low = getBlockAt(mob_x, mob_y - 1, mob_z);
           uint8_t b_mid = getBlockAt(mob_x, mob_y, mob_z);
           uint8_t b_top = getBlockAt(mob_x, mob_y + 1, mob_z);
           while (mob_y < 255) {
-            if ( // Solid block below, non-solid(spawnable) at feet and above
+            if ( /* Solid block below, non-solid(spawnable) at feet and above */
               !isPassableBlock(b_low) &&
               isPassableSpawnBlock(b_mid) &&
               isPassableSpawnBlock(b_top)
@@ -374,16 +387,18 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
             mob_y ++;
           }
           if (mob_y != 255) {
-            // Spawn passive mobs above ground during the day,
-            // or hostiles underground and during the night
+            /*
+	     * Spawn passive mobs above ground during the day,
+             * or hostiles underground and during the night
+	     */
             if ((world_time < 13000 || world_time > 23460) && mob_y > 48) {
               uint32_t mob_choice = (r >> 12) & 3;
-              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 4); // Chicken
-              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 10); // Cow
-              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 10); // Pig
-              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 8); // Sheep
+              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 4); /* Chicken */
+              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 10); /* Cow */
+              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 10); /* Pig */
+              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 8); /* Sheep */
             } else {
-              spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+              spawnMob(145, mob_x, mob_y, mob_z, 20); /* Zombie */
             }
           }
         }
@@ -400,7 +415,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         while (dx != 0) {
           sc_chunkDataAndUpdateLight(client_fd, _x + dx * VIEW_DISTANCE, _z);
           count ++;
-          for (int i = 1; i <= VIEW_DISTANCE; i ++) {
+          for (i = 1; i <= VIEW_DISTANCE; i ++) {
             sc_chunkDataAndUpdateLight(client_fd, _x + dx * VIEW_DISTANCE, _z - i);
             sc_chunkDataAndUpdateLight(client_fd, _x + dx * VIEW_DISTANCE, _z + i);
             count += 2;
@@ -410,7 +425,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         while (dz != 0) {
           sc_chunkDataAndUpdateLight(client_fd, _x, _z + dz * VIEW_DISTANCE);
           count ++;
-          for (int i = 1; i <= VIEW_DISTANCE; i ++) {
+          for (i = 1; i <= VIEW_DISTANCE; i ++) {
             sc_chunkDataAndUpdateLight(client_fd, _x - i, _z + dz * VIEW_DISTANCE);
             sc_chunkDataAndUpdateLight(client_fd, _x + i, _z + dz * VIEW_DISTANCE);
             count += 2;
@@ -470,7 +485,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 
   }
 
-  // Detect and fix incorrectly parsed packets
+  /* Detect and fix incorrectly parsed packets */
   int processed_length = total_bytes_received - bytes_received_start;
   if (processed_length == length) return;
 
@@ -496,7 +511,8 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 }
 
 int main () {
-  #ifdef _WIN32 //initialize windows socket
+  int i;
+  #ifdef _WIN32 /*initialize windows socket */
     WSADATA wsa;
       if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         fprintf(stderr, "WSAStartup failed\n");
@@ -504,33 +520,33 @@ int main () {
       }
   #endif
 
-  // Hash the seeds to ensure they're random enough
+  /* Hash the seeds to ensure they're random enough */
   world_seed = splitmix64(world_seed);
   printf("World seed (hashed): ");
-  for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((world_seed >> (8 * i)) & 255));
+  for (i = 3; i >= 0; i --) printf("%X", (unsigned int)((world_seed >> (8 * i)) & 255));
 
   rng_seed = splitmix64(rng_seed);
   printf("\nRNG seed (hashed): ");
-  for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
+  for (i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
   printf("\n\n");
 
-  // Initialize block changes entries as unallocated
-  for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
+  /* Initialize block changes entries as unallocated */
+  for (i = 0; i < MAX_BLOCK_CHANGES; i ++) {
     block_changes[i].block = 0xFF;
   }
 
-  // Start the disk/flash serializer (if applicable)
+  /* Start the disk/flash serializer (if applicable) */
   if (initSerializer()) exit(EXIT_FAILURE);
 
-  // Initialize all file descriptor references to -1 (unallocated)
+  /* Initialize all file descriptor references to -1 (unallocated) */
   int clients[MAX_PLAYERS], client_index = 0;
-  for (int i = 0; i < MAX_PLAYERS; i ++) {
+  for (i = 0; i < MAX_PLAYERS; i ++) {
     clients[i] = -1;
     client_states[i * 2] = -1;
     player_data[i].client_fd = -1;
   }
 
-  // Create server TCP socket
+  /* Create server TCP socket */
   int server_fd, opt = 1;
   struct sockaddr_in server_addr, client_addr;
   socklen_t addr_len = sizeof(client_addr);
@@ -550,7 +566,7 @@ int main () {
     exit(EXIT_FAILURE);
   }
 
-  // Bind socket to IP/port
+  /* Bind socket to IP/port */
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = INADDR_ANY;
   server_addr.sin_port = htons(PORT);
@@ -561,7 +577,7 @@ int main () {
     exit(EXIT_FAILURE);
   }
 
-  // Listen for incoming connections
+  /* Listen for incoming connections */
   if (listen(server_fd, 5) < 0) {
     perror("listen failed");
     close(server_fd);
@@ -569,10 +585,12 @@ int main () {
   }
   printf("Server listening on port %d...\n", PORT);
 
-  // Make the socket non-blocking
-  // This is necessary to not starve the idle task during slow connections
+  /*
+   * Make the socket non-blocking
+   * This is necessary to not starve the idle task during slow connections
+   */
   #ifdef _WIN32
-    u_long mode = 1;  // 1 = non-blocking
+    u_long mode = 1;  /* 1 = non-blocking */
     if (ioctlsocket(server_fd, FIONBIO, &mode) != 0) {
       fprintf(stderr, "Failed to set non-blocking mode\n");
       exit(EXIT_FAILURE);
@@ -582,7 +600,7 @@ int main () {
   fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
   #endif
 
-  // Track time of last server tick (in microseconds)
+  /* Track time of last server tick (in microseconds) */
   int64_t last_tick_time = get_program_time();
 
   /**
@@ -591,14 +609,14 @@ int main () {
    * client connection.
    */
   while (true) {
-    // Check if it's time to yield to the idle task
+    /* Check if it's time to yield to the idle task */
     task_yield();
 
-    // Attempt to accept a new connection
-    for (int i = 0; i < MAX_PLAYERS; i ++) {
+    /* Attempt to accept a new connection */
+    for (i = 0; i < MAX_PLAYERS; i ++) {
       if (clients[i] != -1) continue;
       clients[i] = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-      // If the accept was successful, make the client non-blocking too
+      /* If the accept was successful, make the client non-blocking too */
       if (clients[i] != -1) {
         printf("New client, fd: %d\n", clients[i]);
       #ifdef _WIN32
@@ -613,22 +631,22 @@ int main () {
       break;
     }
 
-    // Look for valid connected clients
+    /* Look for valid connected clients */
     client_index ++;
     if (client_index == MAX_PLAYERS) client_index = 0;
     if (clients[client_index] == -1) continue;
 
-    // Handle periodic events (server ticks)
+    /* Handle periodic events (server ticks) */
     int64_t time_since_last_tick = get_program_time() - last_tick_time;
     if (time_since_last_tick > TIME_BETWEEN_TICKS) {
       handleServerTick(time_since_last_tick);
       last_tick_time = get_program_time();
     }
 
-    // Handle this individual client
+    /* Handle this individual client */
     int client_fd = clients[client_index];
 
-    // Check if at least 2 bytes are available for reading
+    /* Check if at least 2 bytes are available for reading */
     #ifdef _WIN32
     recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
     if (recv_count == 0) {
@@ -638,7 +656,7 @@ int main () {
     if (recv_count == SOCKET_ERROR) {
       int err = WSAGetLastError();
       if (err == WSAEWOULDBLOCK) {
-        continue; // no data yet, keep client alive
+        continue; /* no data yet, keep client alive */
       } else {
         disconnectClient(&clients[client_index], 1);
         continue;
@@ -653,63 +671,65 @@ int main () {
       continue;
     }
     #endif
-    // Handle 0xBEEF and 0xFEED packets for dumping/uploading world data
+    /* Handle 0xBEEF and 0xFEED packets for dumping/uploading world data */
     #ifdef DEV_ENABLE_BEEF_DUMPS
-    // Received BEEF packet, dump world data and disconnect
+    /* Received BEEF packet, dump world data and disconnect */
     if (recv_buffer[0] == 0xBE && recv_buffer[1] == 0xEF && getClientState(client_fd) == STATE_NONE) {
-      // Send block changes and player data back to back
-      // The client is expected to know (or calculate) the size of these buffers
+      /*
+       * Send block changes and player data back to back
+       * The client is expected to know (or calculate) the size of these buffers
+       */
       send_all(client_fd, block_changes, sizeof(block_changes));
       send_all(client_fd, player_data, sizeof(player_data));
-      // Flush the socket and receive everything left on the wire
+      /* Flush the socket and receive everything left on the wire */
       shutdown(client_fd, SHUT_WR);
       recv_all(client_fd, recv_buffer, sizeof(recv_buffer), false);
-      // Kick the client
+      /* Kick the client */
       disconnectClient(&clients[client_index], 6);
       continue;
     }
-    // Received FEED packet, load world data from socket and disconnect
+    /* Received FEED packet, load world data from socket and disconnect */
     if (recv_buffer[0] == 0xFE && recv_buffer[1] == 0xED && getClientState(client_fd) == STATE_NONE) {
-      // Consume 0xFEED bytes (previous read was just a peek)
+      /* Consume 0xFEED bytes (previous read was just a peek) */
       recv_all(client_fd, recv_buffer, 2, false);
-      // Write full buffers straight into memory
+      /* Write full buffers straight into memory */
       recv_all(client_fd, block_changes, sizeof(block_changes), false);
       recv_all(client_fd, player_data, sizeof(player_data), false);
-      // Recover block_changes_count
-      for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
+      /* Recover block_changes_count */
+      for (i = 0; i < MAX_BLOCK_CHANGES; i ++) {
         if (block_changes[i].block == 0xFF) continue;
         if (block_changes[i].block == B_chest) i += 14;
         if (i >= block_changes_count) block_changes_count = i + 1;
       }
-      // Update data on disk
+      /* Update data on disk */
       writeBlockChangesToDisk(0, block_changes_count);
       writePlayerDataToDisk();
-      // Kick the client
+      /* Kick the client */
       disconnectClient(&clients[client_index], 7);
       continue;
     }
     #endif
 
-    // Read packet length
+    /* Read packet length */
     int length = readVarInt(client_fd);
     if (length == VARNUM_ERROR) {
       disconnectClient(&clients[client_index], 2);
       continue;
     }
-    // Read packet ID
+    /* Read packet ID */
     int packet_id = readVarInt(client_fd);
     if (packet_id == VARNUM_ERROR) {
       disconnectClient(&clients[client_index], 3);
       continue;
     }
-    // Get client connection state
+    /* Get client connection state */
     int state = getClientState(client_fd);
-    // Disconnect on legacy server list ping
+    /* Disconnect on legacy server list ping */
     if (state == STATE_NONE && length == 254 && packet_id == 122) {
       disconnectClient(&clients[client_index], 5);
       continue;
     }
-    // Handle packet data
+    /* Handle packet data */
     handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
     if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
       disconnectClient(&clients[client_index], 4);
@@ -720,7 +740,7 @@ int main () {
 
   close(server_fd);
  
-  #ifdef _WIN32 //cleanup windows socket
+  #ifdef _WIN32 /*cleanup windows socket */
     WSACleanup();
   #endif
 
