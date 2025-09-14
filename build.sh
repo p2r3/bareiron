@@ -33,7 +33,7 @@ for arg in "$@"; do
         compiler="/opt/bin/i686-w64-mingw32-gcc"
         windows_linker="$windows_linker -Wl,--subsystem,console:4"
       else
-        echo "Error: Building for Windows 9x is only supported when running under MinGW64."
+        echo "Error: Compiling for Windows 9x is only supported when running under the MinGW64 shell."
         exit 1
       fi
       ;;
