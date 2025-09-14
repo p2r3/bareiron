@@ -218,15 +218,17 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
+        uint8_t block_feet = getBlockAt(player->x, player->y, player->z);
+        uint8_t swimming = block_feet >= B_water && block_feet < B_water + 8;
+
         // Handle fall damage
         if (on_ground) {
           int16_t damage = player->grounded_y - player->y - 3;
-          if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2)) {
-            uint8_t block_feet = getBlockAt(player->x, player->y, player->z);
-            if (block_feet < B_water || block_feet > B_water + 7) {
-              hurtEntity(client_fd, -1, D_fall, damage);
-            }
+          if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2) && !swimming) {
+            hurtEntity(client_fd, -1, D_fall, damage);
           }
+          player->grounded_y = player->y;
+        } else if (swimming) {
           player->grounded_y = player->y;
         }
 
