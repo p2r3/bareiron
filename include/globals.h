@@ -238,7 +238,8 @@ typedef struct {
   uint8_t y;
   short z;
   // Lower 5 bits: health
-  // Upper 3 bits: reserved (?)
+  // Middle 1 bit: reserved for future use
+  // Upper 2 bits: panic timer
   uint8_t data;
 } MobData;
 
