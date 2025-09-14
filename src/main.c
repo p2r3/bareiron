@@ -628,18 +628,17 @@ int main () {
     #ifdef _WIN32
     recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
     if (recv_count == 0) {
-        disconnectClient(&clients[client_index], 1);
-        continue;
+      disconnectClient(&clients[client_index], 1);
+      continue;
     }
     if (recv_count == SOCKET_ERROR) {
-        int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) {
-            continue; // no data yet, keep client alive
-        }
-        else {
-            disconnectClient(&clients[client_index], 1);
-            continue;
-        }
+      int err = WSAGetLastError();
+      if (err == WSAEWOULDBLOCK) {
+        continue; // no data yet, keep client alive
+      } else {
+        disconnectClient(&clients[client_index], 1);
+        continue;
+      }
     }
     #else
     recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
