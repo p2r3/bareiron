@@ -437,6 +437,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
       break;
+	
+    case 0x3C:
+      if (state == STATE_PLAY) cs_swingArm(client_fd);
+      break;
 
     case 0x28:
       if (state == STATE_PLAY) cs_playerAction(client_fd);

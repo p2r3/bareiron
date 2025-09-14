@@ -14,6 +14,7 @@ int cs_setPlayerPosition (int client_fd, double *x, double *y, double *z, uint8_
 int cs_setPlayerRotation (int client_fd, float *yaw, float *pitch, uint8_t *on_ground);
 int cs_setPlayerMovementFlags (int client_fd, uint8_t *on_ground);
 int cs_setHeldItem (int client_fd);
+int cs_swingArm (int client_fd);
 int cs_clickContainer (int client_fd);
 int cs_closeContainer (int client_fd);
 int cs_clientStatus (int client_fd);
@@ -47,6 +48,7 @@ int sc_acknowledgeBlockChange (int client_fd, int sequence);
 int sc_playerInfoUpdateAddPlayer (int client_fd, PlayerData player);
 int sc_spawnEntity (int client_fd, int id, uint8_t *uuid, int type, double x, double y, double z, uint8_t yaw, uint8_t pitch);
 int sc_spawnEntityPlayer (int client_fd, PlayerData player);
+int sc_entityAnimation (int client_fd, int id, uint8_t animation);
 int sc_teleportEntity (int client_fd, int id, double x, double y, double z, float yaw, float pitch);
 int sc_setHeadRotation (int client_fd, int id, uint8_t yaw);
 int sc_updateEntityRotation (int client_fd, int id, uint8_t yaw, uint8_t pitch);

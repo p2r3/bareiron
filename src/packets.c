@@ -762,6 +762,43 @@ int cs_setPlayerMovementFlags (int client_fd, uint8_t *on_ground) {
   return 0;
 }
 
+// C->S Swing Arm (serverbound)
+int cs_swingArm (int client_fd) {
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  uint8_t hand = readVarInt(client_fd);
+
+  uint8_t animation = 255;
+  switch (hand) {
+    case 0: {
+      animation = 0;
+      break;
+    }
+    case 1: {
+      animation = 2;
+      break;
+    }
+  }
+
+  if (animation == 255)
+    return 1;
+
+  // Forward animation to all connected players
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    PlayerData* other_player = &player_data[i];
+
+    if (other_player->client_fd == -1) continue;
+    if (other_player->client_fd == player->client_fd) continue;
+    if (other_player->flags & 0x20) continue;
+
+    sc_entityAnimation(other_player->client_fd, player->client_fd, animation);
+  }
+
+  return 0;
+}
+
 // C->S Set Held Item (serverbound)
 int cs_setHeldItem (int client_fd) {
 
@@ -878,6 +915,17 @@ int sc_spawnEntityPlayer (int client_fd, PlayerData player) {
     player.z > 0 ? (double)player.z + 0.5 : (float)player.z - 0.5,
     player.yaw, player.pitch
   );
+}
+
+// S->C Entity Animation (from PlayerData)
+int sc_entityAnimation (int client_fd, int id, uint8_t animation) {
+  writeVarInt(client_fd, 2 + sizeVarInt(id));
+  writeByte(client_fd, 0x02);
+
+  writeVarInt(client_fd, id); // Entity ID
+  writeByte(client_fd, animation); // Animation
+
+  return 0;
 }
 
 // S->C Teleport Entity
