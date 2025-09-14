@@ -917,7 +917,7 @@ int sc_spawnEntityPlayer (int client_fd, PlayerData player) {
   );
 }
 
-// S->C Entity Animation (from PlayerData)
+// S->C Entity Animation
 int sc_entityAnimation (int client_fd, int id, uint8_t animation) {
   writeVarInt(client_fd, 2 + sizeVarInt(id));
   writeByte(client_fd, 0x02);
