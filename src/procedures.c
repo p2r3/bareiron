@@ -179,16 +179,12 @@ void disconnectClient (int *client_fd, int cause) {
   handlePlayerDisconnect(*client_fd);
   #ifdef _WIN32
   closesocket(*client_fd);
-  int old_fd = *client_fd;
+  printf("Disconnected client %d, cause: %d, errno: %d\n", *client_fd, cause, WSAGetLastError());
   #else
   close(*client_fd);
-  #endif
-  *client_fd = -1;
-  #ifdef _WIN32
-  printf("Disconnected client %d, cause: %d, errno: %d\n", old_fd, cause, WSAGetLastError());
-  #else
   printf("Disconnected client %d, cause: %d, errno: %d\n\n", *client_fd, cause, errno);
   #endif
+  *client_fd = -1;
 }
 
 uint8_t serverSlotToClientSlot (int window_id, uint8_t slot) {
