@@ -1023,6 +1023,10 @@ int cs_clientStatus (int client_fd) {
 // S->C System Chat
 int sc_systemChat (int client_fd, char* message, uint16_t len) {
 
+  if (strchr(message, (char)0x80)) {
+    msg = "?";
+    len = 1;
+  }
   writeVarInt(client_fd, 5 + len);
   writeByte(client_fd, 0x72);
 
