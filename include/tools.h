@@ -22,6 +22,7 @@ ssize_t writeUint32 (int client_fd, uint32_t num);
 ssize_t writeUint64 (int client_fd, uint64_t num);
 ssize_t writeFloat (int client_fd, float num);
 ssize_t writeDouble (int client_fd, double num);
+ssize_t writeEntityData (int client_fd, EntityData *data);
 
 uint8_t readByte (int client_fd);
 uint16_t readUint16 (int client_fd);
@@ -33,6 +34,9 @@ float readFloat (int client_fd);
 double readDouble (int client_fd);
 
 void readString (int client_fd);
+
+int sizeEntityData (EntityData *data);
+int sizeEntityMetadata (EntityData *metadata, size_t length);
 
 uint32_t fast_rand ();
 uint64_t splitmix64 (uint64_t state);

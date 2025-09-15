@@ -25,6 +25,9 @@
 // How many mobs to allocate memory for
 #define MAX_MOBS (MAX_PLAYERS)
 
+// How many data there is in the player metadata
+#define PLAYER_METADATA_LENGTH 2
+
 // Manhattan distance at which mobs despawn
 #define MOB_DESPAWN_DISTANCE 256
 
@@ -244,6 +247,21 @@ typedef struct {
 } MobData;
 
 #pragma pack(pop)
+
+union EntityDataValue {
+  uint8_t byte;
+  int pose;
+};
+
+typedef struct {
+  uint8_t index;
+  // 0 - Byte
+  // 21 - Pose
+  int type;
+  union EntityDataValue value;
+} EntityData;
+
+extern EntityData player_metadata[PLAYER_METADATA_LENGTH];
 
 extern BlockChange block_changes[MAX_BLOCK_CHANGES];
 extern int block_changes_count;

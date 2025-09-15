@@ -378,6 +378,14 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
   int pose = 0;
   if (sneaking) pose = 5;
+  
+  union EntityDataValue bit_mask_data;
+  bit_mask_data.byte = bit_mask;
+  union EntityDataValue pose_data;
+  pose_data.pose = pose;
+
+  player_metadata[0].value = bit_mask_data; // Set bit mask
+  player_metadata[1].value = pose_data; // Set pose
 
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     PlayerData* other_player = &player_data[i];
@@ -387,20 +395,7 @@ void broadcastPlayerMetadata (PlayerData *player) {
     if (client_fd == player->client_fd) continue;
     if (other_player->flags & 0x20) continue;
 
-    writeVarInt(client_fd, 5 + sizeVarInt(player->client_fd) + sizeVarInt(0) + sizeVarInt(21) + sizeVarInt(pose));
-    writeByte(client_fd, 0x5C);
-
-    writeVarInt(client_fd, player->client_fd); // Entity ID
-
-    writeByte(client_fd, 0); // Index (Bit Mask)
-    writeVarInt(client_fd, 0); // Type (Byte)
-    writeByte(client_fd, bit_mask); // Value
-
-    writeByte(client_fd, 6); // Index (Pose)
-    writeVarInt(client_fd, 21); // Type (Pose)
-    writeVarInt(client_fd, pose); // Value
-
-    writeByte(client_fd, 0xFF); // End
+    sc_setEntityMetadata(client_fd, player->client_fd, player_metadata, PLAYER_METADATA_LENGTH);
   }
 }
 

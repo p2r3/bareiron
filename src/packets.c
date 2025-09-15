@@ -914,6 +914,24 @@ int sc_spawnEntity (
   return 0;
 }
 
+// S->C Set Entity Metadata
+int sc_setEntityMetadata (int client_fd, int id, EntityData *metadata, size_t length) {
+  int entity_metadata_size = sizeEntityMetadata(metadata, length);
+  if (entity_metadata_size == -1) return -1;
+
+  writeVarInt(client_fd, 2 + sizeVarInt(id) + entity_metadata_size);
+  writeByte(client_fd, 0x5C);
+
+  writeVarInt(client_fd, id); // Entity ID
+
+  for (size_t i = 0; i < length; i ++) {
+    EntityData *data = &metadata[i];
+    writeEntityData(client_fd, data);
+  }
+
+  writeByte(client_fd, 0xFF); // End
+}
+
 // S->C Spawn Entity (from PlayerData)
 int sc_spawnEntityPlayer (int client_fd, PlayerData player) {
   return sc_spawnEntity(
