@@ -23,7 +23,6 @@
 #  define inline /* nothing */
 #endif
 
-
 static inline int mod_abs (int a, int b) {
   return ((a % b) + b) % b;
 }
