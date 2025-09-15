@@ -26,6 +26,7 @@
     #include <sys/socket.h>
     #include <netinet/in.h>
     #include <arpa/inet.h>
+    #include <sys/select.h>
   #endif
   #include <unistd.h>
   #include <time.h>
@@ -585,137 +586,163 @@ int main () {
   // Track time of last server tick (in microseconds)
   int64_t last_tick_time = get_program_time();
 
-  /**
-   * Cycles through all connected clients, handling one packet at a time
-   * from each player. With every iteration, attempts to accept a new
-   * client connection.
-   */
+  // Main server loop: use select() to sleep until I/O or next tick
   while (true) {
-    // Check if it's time to yield to the idle task
-    task_yield();
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(server_fd, &read_fds);
 
-    // Attempt to accept a new connection
+    int max_fd = server_fd;
     for (int i = 0; i < MAX_PLAYERS; i ++) {
-      if (clients[i] != -1) continue;
-      clients[i] = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-      // If the accept was successful, make the client non-blocking too
       if (clients[i] != -1) {
-        printf("New client, fd: %d\n", clients[i]);
-      #ifdef _WIN32
-        u_long mode = 1;
-        ioctlsocket(clients[i], FIONBIO, &mode);
-      #else
-        int flags = fcntl(clients[i], F_GETFL, 0);
-        fcntl(clients[i], F_SETFL, flags | O_NONBLOCK);
-      #endif
-        client_count ++;
+        FD_SET(clients[i], &read_fds);
+        if (clients[i] > max_fd) max_fd = clients[i];
       }
-      break;
     }
 
-    // Look for valid connected clients
-    client_index ++;
-    if (client_index == MAX_PLAYERS) client_index = 0;
-    if (clients[client_index] == -1) continue;
+    // Compute timeout until next server tick
+    struct timeval timeout;
+    int64_t now = get_program_time();
+    int64_t elapsed = now - last_tick_time;
+    int64_t to_next = TIME_BETWEEN_TICKS - elapsed;
+    if (to_next < 0) to_next = 0;
+    timeout.tv_sec = (time_t)(to_next / 1000000);
+    timeout.tv_usec = (suseconds_t)(to_next % 1000000);
 
-    // Handle periodic events (server ticks)
-    int64_t time_since_last_tick = get_program_time() - last_tick_time;
-    if (time_since_last_tick > TIME_BETWEEN_TICKS) {
-      handleServerTick(time_since_last_tick);
+    int activity;
+  #ifdef _WIN32
+    activity = select(0, &read_fds, NULL, NULL, &timeout);
+    if (activity == SOCKET_ERROR) {
+      int err = WSAGetLastError();
+      if (err == WSAEINTR) continue;
+      if (err == WSAETIMEDOUT) activity = 0;
+    }
+  #else
+    activity = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+    if (activity < 0) {
+      if (errno == EINTR) continue; // interrupted, retry
+    }
+  #endif
+
+    now = get_program_time();
+    elapsed = now - last_tick_time;
+    if (elapsed >= TIME_BETWEEN_TICKS) {
+      handleServerTick(elapsed);
       last_tick_time = get_program_time();
     }
 
-    // Handle this individual client
-    int client_fd = clients[client_index];
-
-    // Check if at least 2 bytes are available for reading
-    #ifdef _WIN32
-    recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
-    if (recv_count == 0) {
-      disconnectClient(&clients[client_index], 1);
+    if (activity <= 0) {
+      // timeout or error already handled; continue loop
       continue;
     }
-    if (recv_count == SOCKET_ERROR) {
-      int err = WSAGetLastError();
-      if (err == WSAEWOULDBLOCK) {
-        continue; // no data yet, keep client alive
-      } else {
-        disconnectClient(&clients[client_index], 1);
+
+    if (FD_ISSET(server_fd, &read_fds)) {
+      while (true) {
+        int slot = -1;
+        for (int i = 0; i < MAX_PLAYERS; i ++) {
+          if (clients[i] == -1) { slot = i; break; }
+        }
+        if (slot == -1) {
+          int tmp = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+          if (tmp == -1) break;
+        #ifdef _WIN32
+          closesocket(tmp);
+        #else
+          close(tmp);
+        #endif
+          break;
+        }
+
+        clients[slot] = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+        if (clients[slot] == -1) break; // no more pending
+        printf("New client, fd: %d\n", clients[slot]);
+      #ifdef _WIN32
+        u_long mode = 1;
+        ioctlsocket(clients[slot], FIONBIO, &mode);
+      #else
+        int flags = fcntl(clients[slot], F_GETFL, 0);
+        fcntl(clients[slot], F_SETFL, flags | O_NONBLOCK);
+      #endif
+        client_count ++;
+      }
+    }
+
+    for (int i = 0; i < MAX_PLAYERS; i ++) {
+      int client_fd = clients[i];
+      if (client_fd == -1) continue;
+      if (!FD_ISSET(client_fd, &read_fds)) continue;
+
+    #ifdef _WIN32
+      recv_count = recv(client_fd, recv_buffer, 2, MSG_PEEK);
+      if (recv_count == 0) {
+        disconnectClient(&clients[i], 1);
+        continue;
+      }
+      if (recv_count == SOCKET_ERROR) {
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK) {
+          continue; // no data yet, keep client alive
+        } else {
+          disconnectClient(&clients[i], 1);
+          continue;
+        }
+      }
+    #else
+      recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
+      if (recv_count < 2) {
+        if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+          disconnectClient(&clients[i], 1);
+        }
+        continue;
+      }
+    #endif
+
+    #ifdef DEV_ENABLE_BEEF_DUMPS
+      if (recv_buffer[0] == 0xBE && recv_buffer[1] == 0xEF && getClientState(client_fd) == STATE_NONE) {
+        send_all(client_fd, block_changes, sizeof(block_changes));
+        send_all(client_fd, player_data, sizeof(player_data));
+        shutdown(client_fd, SHUT_WR);
+        recv_all(client_fd, recv_buffer, sizeof(recv_buffer), false);
+        disconnectClient(&clients[i], 6);
+        continue;
+      }
+      if (recv_buffer[0] == 0xFE && recv_buffer[1] == 0xED && getClientState(client_fd) == STATE_NONE) {
+        recv_all(client_fd, recv_buffer, 2, false);
+        recv_all(client_fd, block_changes, sizeof(block_changes), false);
+        recv_all(client_fd, player_data, sizeof(player_data), false);
+        for (int j = 0; j < MAX_BLOCK_CHANGES; j ++) {
+          if (block_changes[j].block == 0xFF) continue;
+          if (block_changes[j].block == B_chest) j += 14;
+          if (j >= block_changes_count) block_changes_count = j + 1;
+        }
+        writeBlockChangesToDisk(0, block_changes_count);
+        writePlayerDataToDisk();
+        disconnectClient(&clients[i], 7);
+        continue;
+      }
+    #endif
+
+      int length = readVarInt(client_fd);
+      if (length == VARNUM_ERROR) {
+        disconnectClient(&clients[i], 2);
+        continue;
+      }
+      int packet_id = readVarInt(client_fd);
+      if (packet_id == VARNUM_ERROR) {
+        disconnectClient(&clients[i], 3);
+        continue;
+      }
+      int state = getClientState(client_fd);
+      if (state == STATE_NONE && length == 254 && packet_id == 122) {
+        disconnectClient(&clients[i], 5);
+        continue;
+      }
+      handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
+      if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+        disconnectClient(&clients[i], 4);
         continue;
       }
     }
-    #else
-    recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
-    if (recv_count < 2) {
-      if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
-        disconnectClient(&clients[client_index], 1);
-      }
-      continue;
-    }
-    #endif
-    // Handle 0xBEEF and 0xFEED packets for dumping/uploading world data
-    #ifdef DEV_ENABLE_BEEF_DUMPS
-    // Received BEEF packet, dump world data and disconnect
-    if (recv_buffer[0] == 0xBE && recv_buffer[1] == 0xEF && getClientState(client_fd) == STATE_NONE) {
-      // Send block changes and player data back to back
-      // The client is expected to know (or calculate) the size of these buffers
-      send_all(client_fd, block_changes, sizeof(block_changes));
-      send_all(client_fd, player_data, sizeof(player_data));
-      // Flush the socket and receive everything left on the wire
-      shutdown(client_fd, SHUT_WR);
-      recv_all(client_fd, recv_buffer, sizeof(recv_buffer), false);
-      // Kick the client
-      disconnectClient(&clients[client_index], 6);
-      continue;
-    }
-    // Received FEED packet, load world data from socket and disconnect
-    if (recv_buffer[0] == 0xFE && recv_buffer[1] == 0xED && getClientState(client_fd) == STATE_NONE) {
-      // Consume 0xFEED bytes (previous read was just a peek)
-      recv_all(client_fd, recv_buffer, 2, false);
-      // Write full buffers straight into memory
-      recv_all(client_fd, block_changes, sizeof(block_changes), false);
-      recv_all(client_fd, player_data, sizeof(player_data), false);
-      // Recover block_changes_count
-      for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
-        if (block_changes[i].block == 0xFF) continue;
-        if (block_changes[i].block == B_chest) i += 14;
-        if (i >= block_changes_count) block_changes_count = i + 1;
-      }
-      // Update data on disk
-      writeBlockChangesToDisk(0, block_changes_count);
-      writePlayerDataToDisk();
-      // Kick the client
-      disconnectClient(&clients[client_index], 7);
-      continue;
-    }
-    #endif
-
-    // Read packet length
-    int length = readVarInt(client_fd);
-    if (length == VARNUM_ERROR) {
-      disconnectClient(&clients[client_index], 2);
-      continue;
-    }
-    // Read packet ID
-    int packet_id = readVarInt(client_fd);
-    if (packet_id == VARNUM_ERROR) {
-      disconnectClient(&clients[client_index], 3);
-      continue;
-    }
-    // Get client connection state
-    int state = getClientState(client_fd);
-    // Disconnect on legacy server list ping
-    if (state == STATE_NONE && length == 254 && packet_id == 122) {
-      disconnectClient(&clients[client_index], 5);
-      continue;
-    }
-    // Handle packet data
-    handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
-    if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
-      disconnectClient(&clients[client_index], 4);
-      continue;
-    }
-
   }
 
   close(server_fd);
