@@ -1350,6 +1350,7 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 }
 
 void interactEntity (int entity_id, int interactor_id) {
+
   PlayerData *player;
   if (getPlayerData(interactor_id, &player)) return;
 
