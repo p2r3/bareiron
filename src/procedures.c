@@ -1508,13 +1508,12 @@ void handleServerTick (int64_t time_since_last_tick) {
     }
     #ifdef ENABLE_CACTUS_DAMAGE
     // Tick damage from a cactus block if one is under/inside or around the player.
-    if (block == B_cactus 
-      || getBlockAt(player->x + 1, player->y, player->z) == B_cactus
-      || getBlockAt(player->x - 1, player->y, player->z) == B_cactus
-      || getBlockAt(player->x, player->y, player->z + 1) == B_cactus
-      || getBlockAt(player->x, player->y, player->z - 1) == B_cactus) {
-      hurtEntity(player->client_fd, -1, D_cactus, 4);
-    }
+    if (block == B_cactus ||
+      getBlockAt(player->x + 1, player->y, player->z) == B_cactus ||
+      getBlockAt(player->x - 1, player->y, player->z) == B_cactus ||
+      getBlockAt(player->x, player->y, player->z + 1) == B_cactus ||
+      getBlockAt(player->x, player->y, player->z - 1) == B_cactus
+    ) hurtEntity(player->client_fd, -1, D_cactus, 4);
     #endif
     // Heal from saturation if player is able and has enough food
     if (player->health >= 20 || player->health == 0) continue;
