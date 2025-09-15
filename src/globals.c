@@ -6,7 +6,6 @@
 #else
   #include <arpa/inet.h>
 #endif
-#include <unistd.h>
 
 #include "globals.h"
 

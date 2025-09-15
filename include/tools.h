@@ -1,8 +1,6 @@
 #ifndef H_TOOLS
 #define H_TOOLS
 
-#include <unistd.h>
-
 #include "globals.h"
 
 inline int mod_abs (int a, int b) {
