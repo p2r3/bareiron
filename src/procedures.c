@@ -368,6 +368,7 @@ void spawnPlayer (PlayerData *player) {
 
 }
 
+// Broadcasts a player's entity metadata (sneak/sprint state) to other players
 void broadcastPlayerMetadata (PlayerData *player) {
   uint8_t sneaking = (player->flags & 0x04) != 0;
   uint8_t sprinting = (player->flags & 0x08) != 0;
@@ -381,9 +382,9 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
   EntityData metadata[] = {
     {
-      0,                // Index (Bit Mask)
-      0,                // Type (Byte)
-      player_bit_mask,  // Value
+      0,               // Index (Bit Mask)
+      0,               // Type (Byte)
+      player_bit_mask, // Value
     },
     {
       6,    // Index (Pose),
@@ -1813,39 +1814,35 @@ ssize_t writeEntityData (int client_fd, EntityData *data) {
   writeVarInt(client_fd, data->type);
 
   switch (data->type) {
-    case 0: { // Byte
+    case 0: // Byte
       return writeByte(client_fd, data->value.byte);
-    }
-    case 21: { // Pose
+    case 21: // Pose
       writeVarInt(client_fd, data->value.pose);
       return 0;
-    }
-    default: {
-      return -1;
-    }
+
+    default: return -1;
   }
 }
 
+// Returns the networked size of an EntityData entry
 int sizeEntityData (EntityData *data) {
   int value_size;
 
   switch (data->type) {
-    case 0: { // Byte
+    case 0: // Byte
       value_size = 1;
       break;
-    }
-    case 21: { // Pose
+    case 21: // Pose
       value_size = sizeVarInt(data->value.pose);
       break;
-    }
-    default: {
-      return -1;
-    }
+
+    default: return -1;
   }
 
   return 1 + sizeVarInt(data->type) + value_size;
 }
 
+// Returns the networked size of an array of EntityData entries
 int sizeEntityMetadata (EntityData *metadata, size_t length) {
   int total_size = 0;
   for (size_t i = 0; i < length; i ++) {

@@ -120,7 +120,7 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
       if (err == WSAEWOULDBLOCK || err == WSAEINTR) {
     #else
     if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-    #endif  
+    #endif
       // handle network timeout
       if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
         disconnectClient(&client_fd, -2);
@@ -162,7 +162,6 @@ ssize_t writeDouble (int client_fd, double num) {
   bits = htonll(bits);
   return send_all(client_fd, &bits, sizeof(bits));
 }
-
 
 uint8_t readByte (int client_fd) {
   recv_count = recv_all(client_fd, recv_buffer, 1, false);

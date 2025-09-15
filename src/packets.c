@@ -917,7 +917,7 @@ int sc_spawnEntity (
 // S->C Set Entity Metadata
 int sc_setEntityMetadata (int client_fd, int id, EntityData *metadata, size_t length) {
   int entity_metadata_size = sizeEntityMetadata(metadata, length);
-  if (entity_metadata_size == -1) return -1;
+  if (entity_metadata_size == -1) return 1;
 
   writeVarInt(client_fd, 2 + sizeVarInt(id) + entity_metadata_size);
   writeByte(client_fd, 0x5C);
@@ -930,6 +930,8 @@ int sc_setEntityMetadata (int client_fd, int id, EntityData *metadata, size_t le
   }
 
   writeByte(client_fd, 0xFF); // End
+
+  return 0;
 }
 
 // S->C Spawn Entity (from PlayerData)
@@ -1219,7 +1221,7 @@ int cs_playerInput (int client_fd) {
   // Set or clear sneaking flag
   if (flags & 0x20) player->flags |= 0x04;
   else player->flags &= ~0x04;
-  
+
   broadcastPlayerMetadata(player);
 
   return 0;
