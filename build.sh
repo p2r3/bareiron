@@ -41,5 +41,5 @@ for arg in "$@"; do
 done
 
 rm -f "bareiron$exe"
-$compiler src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
+$compiler src/*.c -O3 -march=native -Iinclude -o "bareiron$exe" $windows_linker
 "./bareiron$exe"
