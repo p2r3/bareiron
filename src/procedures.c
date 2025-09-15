@@ -1389,10 +1389,14 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         strcpy((char *)recv_buffer + player_name_len, " was slain by ");
         strcpy((char *)recv_buffer + player_name_len + 14, attacker->name);
         recv_buffer[player_name_len + 14 + strlen(attacker->name)] = '\0';
+      } else if (damage_type == D_cactus) {
+        // Killed by being near a cactus
+        strcpy((char *)recv_buffer + player_name_len, " was pricked to death");
+        recv_buffer[player_name_len + 21] = '\0';
       } else {
         // Unknown death reason
         strcpy((char *)recv_buffer + player_name_len, " died");
-        recv_buffer[player_name_len + 4] = '\0';
+        recv_buffer[player_name_len + 5] = '\0';
       }
 
     } else player->health -= effective_damage;
@@ -1502,6 +1506,16 @@ void handleServerTick (int64_t time_since_last_tick) {
     if (block >= B_lava && block < B_lava + 4) {
       hurtEntity(player->client_fd, -1, D_lava, 8);
     }
+    #ifdef ENABLE_CACTUS_DAMAGE
+    // Tick damage from a cactus block if one is under/inside or around the player.
+    if (block == B_cactus 
+      || getBlockAt(player->x + 1, player->y, player->z) == B_cactus
+      || getBlockAt(player->x - 1, player->y, player->z) == B_cactus
+      || getBlockAt(player->x, player->y, player->z + 1) == B_cactus
+      || getBlockAt(player->x, player->y, player->z - 1) == B_cactus) {
+      hurtEntity(player->client_fd, -1, D_cactus, 4);
+    }
+    #endif
     // Heal from saturation if player is able and has enough food
     if (player->health >= 20 || player->health == 0) continue;
     if (player->hunger < 18) continue;

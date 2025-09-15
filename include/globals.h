@@ -142,6 +142,9 @@
 // every time a block is broken.
 #define ENABLE_PICKUP_ANIMATION
 
+// If defined, players are able to receive damage from nearby cacti.
+#define ENABLE_CACTUS_DAMAGE
+
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
 
