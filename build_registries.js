@@ -411,25 +411,25 @@ async function convert () {
 #include <stdint.h>
 #include "registries.h"
 
-// Binary contents of required "Registry Data" packets
+/* Binary contents of required "Registry Data" packets */
 uint8_t registries_bin[] = {
 ${toCArray(fullRegistryBuffer)}
 };
-// Binary contents of "Update Tags" packets
+/* Binary contents of "Update Tags" packets */
 uint8_t tags_bin[] = {
 ${toCArray(tagBuffer)}
 };
 
-// Block palette
+/* Block palette */
 uint16_t block_palette[] = { ${Object.values(itemsAndBlocks.palette).join(", ")} };
-// Block palette as VarInt buffer
+/* Block palette as VarInt buffer */
 uint8_t network_block_palette[] = {
 ${toCArray(networkBlockPalette)}
 };
 
-// Block-to-item mapping
+/* Block-to-item mapping */
 uint16_t B_to_I[] = { ${itemsAndBlocks.mappingWithOverrides.join(", ")} };
-// Item-to-block mapping
+/* Item-to-block mapping */
 uint8_t I_to_B (uint16_t item) {
   switch (item) {
     ${itemsAndBlocks.mapping.map((c, i) => c ? `case ${c}: return ${i};\n    ` : "").join("")}
@@ -445,25 +445,25 @@ uint8_t I_to_B (uint16_t item) {
 
 #include <stdint.h>
 
-// Binary packet data (${fullRegistryBuffer.length + tagBuffer.length} bytes total)
+/* Binary packet data (${fullRegistryBuffer.length + tagBuffer.length} bytes total) */
 extern uint8_t registries_bin[${fullRegistryBuffer.length}];
 extern uint8_t tags_bin[${tagBuffer.length}];
 
-extern uint16_t block_palette[256]; // Block palette
-extern uint8_t network_block_palette[${networkBlockPalette.length}]; // Block palette as VarInt buffer
-extern uint16_t B_to_I[256]; // Block-to-item mapping
-uint8_t I_to_B (uint16_t item); // Item-to-block mapping
+extern uint16_t block_palette[256]; /* Block palette */
+extern uint8_t network_block_palette[${networkBlockPalette.length}]; /* Block palette as VarInt buffer */
+extern uint16_t B_to_I[256]; /* Block-to-item mapping */
+uint8_t I_to_B (uint16_t item); /* Item-to-block mapping */
 
-// Block identifiers
+/* Block identifiers */
 ${Object.keys(itemsAndBlocks.palette).map((c, i) => `#define B_${c} ${i}`).join("\n")}
 
-// Item identifiers
+/* Item identifiers */
 ${Object.entries(itemsAndBlocks.items).map(c => `#define I_${c[0]} ${c[1]}`).join("\n")}
 
-// Biome identifiers
+/* Biome identifiers */
 ${biomes.map((c, i) => `#define W_${c} ${i}`).join("\n")}
 
-// Damage type identifiers
+/* Damage type identifiers */
 ${registries["damage_type"].map((c, i) => `#define D_${c} ${i}`).join("\n")}
 
 #endif

@@ -91,7 +91,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
         case I_cobblestone:
         case I_stone:
         case I_snow_block:
-          // Slab recipes
+          /* Slab recipes */
           if (
             first_col == 0 &&
             player->craft_items[first + 1] == first_item &&
@@ -108,7 +108,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
         case I_gold_ingot:
         case I_diamond:
         case I_netherite_ingot:
-          // Shovel recipes
+          /* Shovel recipes */
           if (
             first_row == 0 &&
             player->craft_items[first + 3] == I_stick &&
@@ -123,7 +123,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             *count = 1;
             return;
           }
-          // Sword recipes
+          /* Sword recipes */
           if (
             first_row == 0 &&
             player->craft_items[first + 3] == first_item &&
@@ -149,7 +149,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
         case I_oak_planks:
         case I_oak_log:
         case I_snowball:
-          // Uniform 2x2 shaped recipes
+          /* Uniform 2x2 shaped recipes */
           if (
             first_col != 2 && first_row != 2 &&
             player->craft_items[first + 1] == first_item &&
@@ -162,7 +162,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             return;
           }
           break;
-        // Boot recipes
+        /* Boot recipes */
         case I_leather:
         case I_iron_ingot:
         case I_gold_ingot:
@@ -196,7 +196,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
         case I_gold_ingot:
         case I_diamond:
         case I_netherite_ingot:
-          // Pickaxe recipes
+          /* Pickaxe recipes */
           if (
             first == 0 &&
             player->craft_items[first + 1] == first_item &&
@@ -213,7 +213,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             *count = 1;
             return;
           }
-          // Axe recipes
+          /* Axe recipes */
           if (
             first < 2 &&
             player->craft_items[first + 1] == first_item &&
@@ -241,7 +241,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             first_item == I_cobblestone
           ) break;
         case I_leather:
-          // Helmet recipes
+          /* Helmet recipes */
           if (
             first_col == 0 && first_row < 2 &&
             player->craft_items[first + 1] == first_item &&
@@ -264,7 +264,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       break;
 
     case 7:
-      // Legging recipes
+      /* Legging recipes */
       if (identical && player->craft_items[4] == 0 && player->craft_items[7] == 0) {
         switch (first_item) {
           case I_leather: *item = I_leather_leggings; *count = 1; return;
@@ -295,7 +295,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
     case 8:
       if (identical) {
         if (player->craft_items[4] == 0) {
-          // Center slot clear
+          /* Center slot clear */
           switch (first_item) {
             case I_cobblestone: *item = I_furnace; *count = 1; return;
             #ifdef ALLOW_CHESTS
@@ -304,7 +304,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             default: break;
           }
         } else if (player->craft_items[1] == 0) {
-          // Top-middle slot clear (chestplate recipes)
+          /* Top-middle slot clear (chestplate recipes) */
           switch (first_item) {
             case I_leather: *item = I_leather_chestplate; *count = 1; return;
             case I_iron_ingot: *item = I_iron_chestplate; *count = 1; return;
@@ -318,7 +318,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       break;
 
     case 9:
-      // Uniform 3x3 shaped recipes
+      /* Uniform 3x3 shaped recipes */
       if (identical) switch (first_item) {
         case I_iron_ingot: *item = I_iron_block; *count = 1; return;
         case I_gold_ingot: *item = I_gold_block; *count = 1; return;
@@ -347,24 +347,26 @@ void getSmeltingOutput (PlayerData *player) {
   uint8_t *material_count = &player->craft_count[0];
   uint8_t *fuel_count = &player->craft_count[1];
 
-  // Don't process if we're missing material or fuel
+  /* Don't process if we're missing material or fuel */
   if (*material_count == 0 || *fuel_count == 0) return;
 
   uint16_t *material = &player->craft_items[0];
   uint16_t *fuel = &player->craft_items[1];
 
-  // Don't process if we're missing material or fuel
+  /* Don't process if we're missing material or fuel */
   if (*material == 0 || *fuel == 0) return;
 
-  // Furnace output is 3rd crafting table slot
+  /* Furnace output is 3rd crafting table slot */
   uint8_t *output_count = &player->craft_count[2];
   uint16_t *output_item = &player->craft_items[2];
 
-  // Determine fuel efficiency based on the type of item
-  // Since we can't represent fractions, some items use a random component
-  // to represent the fractional part. In some cases (e.g. sticks), this
-  // can lead to a fuel_value of 0, which means that the fuel gets consumed
-  // without processing any materials.
+  /*
+   * Determine fuel efficiency based on the type of item
+   * Since we can't represent fractions, some items use a random component
+   * to represent the fractional part. In some cases (e.g. sticks), this
+   * can lead to a fuel_value of 0, which means that the fuel gets consumed
+   * without processing any materials.
+   */
   uint8_t fuel_value = 0;
   if (*fuel == I_coal) fuel_value = 8;
   else if (*fuel == I_charcoal) fuel_value = 8;

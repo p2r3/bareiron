@@ -10,7 +10,7 @@
   void writePlayerDataToDisk ();
   void writeDataToDiskOnInterval ();
 #else
-  // Define no-op placeholders for when disk syncing isn't enabled
+  /* Define no-op placeholders for when disk syncing isn't enabled */
   #define writeBlockChangesToDisk(a, b)
   #define writeChestChangesToDisk(a, b)
   #define writePlayerDataToDisk()
