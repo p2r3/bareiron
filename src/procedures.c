@@ -368,7 +368,7 @@ void spawnPlayer (PlayerData *player) {
 
 }
 
-void sendPlayerMetadataToAll (PlayerData *player) {
+void broadcastPlayerMetadata (PlayerData *player) {
   uint8_t sneaking = (player->flags & 0x04) != 0;
   uint8_t sprinting = (player->flags & 0x08) != 0;
 

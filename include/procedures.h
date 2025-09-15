@@ -20,7 +20,7 @@ void disconnectClient (int *client_fd, int cause);
 int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count);
 void spawnPlayer (PlayerData *player);
 
-void sendPlayerMetadataToAll (PlayerData *player);
+void broadcastPlayerMetadata (PlayerData *player);
 
 uint8_t serverSlotToClientSlot (int window_id, uint8_t slot);
 uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);

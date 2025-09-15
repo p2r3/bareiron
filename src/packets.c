@@ -766,7 +766,7 @@ int cs_setPlayerMovementFlags (int client_fd, uint8_t *on_ground) {
 
   PlayerData *player;
   if (!getPlayerData(client_fd, &player))
-    sendPlayerMetadataToAll(player);
+    broadcastPlayerMetadata(player);
 
   return 0;
 }
@@ -1202,7 +1202,7 @@ int cs_playerInput (int client_fd) {
   if (flags & 0x20) player->flags |= 0x04;
   else player->flags &= ~0x04;
   
-  sendPlayerMetadataToAll(player);
+  broadcastPlayerMetadata(player);
 
   return 0;
 }
@@ -1221,7 +1221,7 @@ int cs_playerCommand (int client_fd) {
   if (action == 1) player->flags |= 0x08;
   else if (action == 2) player->flags &= ~0x08;
 
-  sendPlayerMetadataToAll(player);
+  broadcastPlayerMetadata(player);
 
   return 0;
 }
