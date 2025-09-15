@@ -49,4 +49,9 @@ void handleServerTick (int64_t time_since_last_tick);
 
 void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, uint8_t count, uint8_t slot);
 
+ssize_t writeEntityData (int client_fd, EntityData *data);
+
+int sizeEntityData (EntityData *data);
+int sizeEntityMetadata (EntityData *metadata, size_t length);
+
 #endif

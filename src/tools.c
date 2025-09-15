@@ -162,23 +162,7 @@ ssize_t writeDouble (int client_fd, double num) {
   bits = htonll(bits);
   return send_all(client_fd, &bits, sizeof(bits));
 }
-ssize_t writeEntityData (int client_fd, EntityData *data) {
-  writeByte(client_fd, data->index);
-  writeVarInt(client_fd, data->type);
 
-  switch (data->type) {
-    case 0: { // Byte
-      return writeByte(client_fd, data->value.byte);
-    }
-    case 21: { // Pose
-      writeVarInt(client_fd, data->value.pose);
-      return 0;
-    }
-    default: {
-      return -1;
-    }
-  }
-}
 
 uint8_t readByte (int client_fd) {
   recv_count = recv_all(client_fd, recv_buffer, 1, false);
@@ -239,36 +223,6 @@ void readString (int client_fd) {
   uint32_t length = readVarInt(client_fd);
   recv_count = recv_all(client_fd, recv_buffer, length, false);
   recv_buffer[recv_count] = '\0';
-}
-
-int sizeEntityData (EntityData *data) {
-  int value_size;
-
-  switch (data->type) {
-    case 0: { // Byte
-      value_size = 1;
-      break;
-    }
-    case 21: { // Pose
-      value_size = sizeVarInt(data->value.pose);
-      break;
-    }
-    default: {
-      return -1;
-    }
-  }
-
-  return 1 + sizeVarInt(data->type) + value_size;
-}
-
-int sizeEntityMetadata (EntityData *metadata, size_t length) {
-  int total_size = 0;
-  for (size_t i = 0; i < length; i ++) {
-    int size = sizeEntityData(&metadata[i]);
-    if (size == -1) return -1;
-    total_size += size;
-  }
-  return total_size;
 }
 
 uint32_t fast_rand () {

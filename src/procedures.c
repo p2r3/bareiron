@@ -1807,3 +1807,51 @@ void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, u
 
 }
 #endif
+
+ssize_t writeEntityData (int client_fd, EntityData *data) {
+  writeByte(client_fd, data->index);
+  writeVarInt(client_fd, data->type);
+
+  switch (data->type) {
+    case 0: { // Byte
+      return writeByte(client_fd, data->value.byte);
+    }
+    case 21: { // Pose
+      writeVarInt(client_fd, data->value.pose);
+      return 0;
+    }
+    default: {
+      return -1;
+    }
+  }
+}
+
+int sizeEntityData (EntityData *data) {
+  int value_size;
+
+  switch (data->type) {
+    case 0: { // Byte
+      value_size = 1;
+      break;
+    }
+    case 21: { // Pose
+      value_size = sizeVarInt(data->value.pose);
+      break;
+    }
+    default: {
+      return -1;
+    }
+  }
+
+  return 1 + sizeVarInt(data->type) + value_size;
+}
+
+int sizeEntityMetadata (EntityData *metadata, size_t length) {
+  int total_size = 0;
+  for (size_t i = 0; i < length; i ++) {
+    int size = sizeEntityData(&metadata[i]);
+    if (size == -1) return -1;
+    total_size += size;
+  }
+  return total_size;
+}
