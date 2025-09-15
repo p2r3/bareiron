@@ -22,6 +22,24 @@ case "$unameOut" in
     ;;
 esac
 
+# Default compiler
+compiler="gcc"
+
+# Handle arguments for windows 9x build
+for arg in "$@"; do
+  case $arg in
+    --9x)
+      if [[ "$unameOut" == MINGW64_NT* ]]; then
+        compiler="/opt/bin/i686-w64-mingw32-gcc"
+        windows_linker="$windows_linker -Wl,--subsystem,console:4"
+      else
+        echo "Error: Compiling for Windows 9x is only supported when running under the MinGW64 shell."
+        exit 1
+      fi
+      ;;
+  esac
+done
+
 rm -f "bareiron$exe"
-gcc src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
+$compiler src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
 "./bareiron$exe"

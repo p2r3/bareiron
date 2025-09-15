@@ -45,6 +45,7 @@ int initSerializer () {
     size_t read = fread(block_changes, 1, sizeof(block_changes), file);
     if (read != sizeof(block_changes)) {
       printf("Read %u bytes from \"world.bin\", expected %u (block changes). Aborting.\n", read, sizeof(block_changes));
+      fclose(file);
       return 1;
     }
     // Find the index of the last occupied entry to recover block_changes_count
@@ -56,6 +57,7 @@ int initSerializer () {
     // Seek past block changes to start reading player data
     if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
       perror("Failed to seek to player data in \"world.bin\". Aborting.");
+      fclose(file);
       return 1;
     }
     // Read player data directly into memory
@@ -86,6 +88,7 @@ int initSerializer () {
         "Failed to write initial block data to \"world.bin\".\n"
         "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
       );
+      fclose(file);
       return 1;
     }
     // Seek past written block changes to start writing player data
@@ -94,6 +97,7 @@ int initSerializer () {
         "Failed to seek past block changes in \"world.bin\"."
         "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
       );
+      fclose(file);
       return 1;
     }
     // Write initial player data to disk (should be just nulls?)
