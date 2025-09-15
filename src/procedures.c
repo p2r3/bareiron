@@ -382,7 +382,7 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
   EntityData metadata[] = {
     {
-      0,               // Index (Bit Mask)
+      0,               // Index (Player Bit Mask)
       0,               // Type (Byte)
       player_bit_mask, // Value
     },
@@ -1347,6 +1347,50 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
     break;
   }
 
+}
+
+void interactEntity (int entity_id, int interactor_id) {
+  PlayerData *player;
+  if (getPlayerData(interactor_id, &player)) return;
+
+  MobData *mob = &mob_data[-entity_id - 2];
+
+  if (mob->type == 106) { // Sheep
+    if (player->inventory_items[player->hotbar] == I_shears) {
+      uint8_t sheared = (mob->data >> 5) & 1;
+      if (!sheared) {
+        mob->data |= 1 << 5; // Set sheared to true
+
+        bumpToolDurability(player);
+
+        #ifdef ENABLE_PICKUP_ANIMATION
+        playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
+        #endif
+
+        uint8_t item_count = 1 + fast_rand() % 2; // 1-2
+        givePlayerItem(player, I_white_wool, item_count);
+
+        EntityData metadata[] = {
+          {
+            17,   // Index (Sheep Bit Mask),
+            0,    // Type (Byte),
+            0x10, // Value
+          }
+        };
+
+        for (int i = 0; i < MAX_PLAYERS; i ++) {
+          PlayerData* player = &player_data[i];
+          int client_fd = player->client_fd;
+
+          if (client_fd == -1) continue;
+          if (player->flags & 0x20) continue;
+
+          sc_entityAnimation(client_fd, interactor_id, 0);
+          sc_setEntityMetadata(client_fd, entity_id, metadata, 1);
+        }
+      }
+    }
+  }
 }
 
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage) {

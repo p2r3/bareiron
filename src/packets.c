@@ -1179,7 +1179,9 @@ int cs_interact (int client_fd) {
   // Ignore sneaking flag
   recv_all(client_fd, recv_buffer, 1, false);
 
-  if (type == 1) {
+  if (type == 0) { // Interact
+    interactEntity(entity_id, client_fd);
+  } else if (type == 1) { // Attack
     hurtEntity(entity_id, client_fd, D_generic, 1);
   }
 
