@@ -47,19 +47,6 @@ uint8_t motd_len = sizeof(motd) - 1;
 
 uint16_t client_count;
 
-EntityData player_metadata[PLAYER_METADATA_LENGTH] = {
-  {
-    0,          // Index (Bit Mask)
-    0,          // Type (Byte)
-    (uint8_t)0, // Value
-  },
-  {
-    6,      // Index (Pose),
-    21,     // Type (Pose),
-    (int)0, // Value (Standing)
-  }
-};
-
 BlockChange block_changes[MAX_BLOCK_CHANGES];
 int block_changes_count = 0;
 
