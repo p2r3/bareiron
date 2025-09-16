@@ -30,4 +30,6 @@ pub const c = @cImport({
     @cInclude("procedures.h");
     @cInclude("serialize.h");
     @cInclude("dispatch.h");
+    @cInclude("worldgen.h");
+    @cInclude("registries.h");
 });

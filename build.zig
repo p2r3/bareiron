@@ -21,7 +21,6 @@ pub fn build(b: *std.Build) void {
             "src/procedures.c",
             "src/registries.c",
             "src/serialize.c",
-            "src/structures.c",
             "src/tools.c",
             "src/worldgen.c",
         },
