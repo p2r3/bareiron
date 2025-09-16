@@ -1345,75 +1345,110 @@ int sc_registries (int client_fd) {
 
 }
 
-// S->C Commands (brigadier tree): root -> give shears, spawn sheep
+// S->C Commands (brigadier tree): root -> give <all items>, spawn <all entities>
 int sc_commands (int client_fd) {
-  // Nodes: 0=root, 1=literal("give") -> 2, 2=literal("shears") exec, 3=literal("spawn") -> 4, 4=literal("sheep") exec
-  const int nodes = 5;
+  // Build a dynamic literal tree for command suggestions using generated registries
+  const int item_count = ITEM_NAME_COUNT;
+  const int ent_count = ENTITY_TYPE_COUNT;
+
+  const int idx_root = 0;
+  const int idx_give = 1;
+  const int idx_first_item = 2;
+  const int idx_spawn = idx_first_item + item_count;
+  const int idx_first_entity = idx_spawn + 1;
+
+  const int nodes = 3 + item_count + ent_count; // root + give + spawn + items + entities
 
   // Precompute payload size
   int payload = 0;
   payload += sizeVarInt(nodes);
-  // Node 0: root, children [1,3]
-  payload += 1; // flags
-  payload += sizeVarInt(2) + sizeVarInt(1) + sizeVarInt(3);
-  // Node 1: literal "give", child [2]
-  payload += 1; // flags
-  payload += sizeVarInt(1) + sizeVarInt(2);
-  payload += sizeVarInt(4) + 4; // name length + name
-  // Node 2: literal "shears", exec, no children
-  payload += 1; // flags
-  payload += sizeVarInt(0);
-  payload += sizeVarInt(6) + 6;
-  // Node 3: literal "spawn", child [4]
-  payload += 1; // flags
-  payload += sizeVarInt(1) + sizeVarInt(4);
-  payload += sizeVarInt(5) + 5;
-  // Node 4: literal "sheep", exec, no children
-  payload += 1; // flags
-  payload += sizeVarInt(0);
-  payload += sizeVarInt(5) + 5;
-  // Root index
-  payload += sizeVarInt(0);
 
+  // Node 0: root, children [idx_give, idx_spawn]
+  payload += 1; // flags
+  payload += sizeVarInt(2) + sizeVarInt(idx_give) + sizeVarInt(idx_spawn);
+
+  // Node 1: literal "give", children = all item literals
+  payload += 1; // flags
+  payload += sizeVarInt(item_count);
+  for (int i = 0; i < item_count; i++) payload += sizeVarInt(idx_first_item + i);
+  payload += sizeVarInt(4) + 4; // name length + name "give"
+
+  // Item nodes: executable literals without children
+  for (int i = 0; i < item_count; i++) {
+    const char *name = item_names[i];
+    int len = (int)strlen(name);
+    payload += 1; // flags
+    payload += sizeVarInt(0); // no children
+    payload += sizeVarInt(len) + len; // literal name
+  }
+
+  // Node spawn: literal "spawn", children = all entity literals
+  payload += 1; // flags
+  payload += sizeVarInt(ent_count);
+  for (int i = 0; i < ent_count; i++) payload += sizeVarInt(idx_first_entity + i);
+  payload += sizeVarInt(5) + 5; // name length + name "spawn"
+
+  // Entity nodes: executable literals without children
+  for (int i = 0; i < ent_count; i++) {
+    const char *name = entity_type_names[i];
+    int len = (int)strlen(name);
+    payload += 1; // flags
+    payload += sizeVarInt(0); // no children
+    payload += sizeVarInt(len) + len; // literal name
+  }
+
+  // Root index
+  payload += sizeVarInt(idx_root);
+
+  // Write packet header
   writeVarInt(client_fd, 1 + payload);
   writeByte(client_fd, 0x10);
 
+  // Write nodes count
   writeVarInt(client_fd, nodes);
 
   // Node 0: root
-  writeByte(client_fd, 0x00); // flags: type=root
-  writeVarInt(client_fd, 2); // children count
-  writeVarInt(client_fd, 1);
-  writeVarInt(client_fd, 3);
+  writeByte(client_fd, 0x00); // type=root
+  writeVarInt(client_fd, 2);
+  writeVarInt(client_fd, idx_give);
+  writeVarInt(client_fd, idx_spawn);
 
   // Node 1: literal "give"
   writeByte(client_fd, 0x01); // type=literal
-  writeVarInt(client_fd, 1); // children count
-  writeVarInt(client_fd, 2);
-  writeVarInt(client_fd, 4); // name len
+  writeVarInt(client_fd, item_count);
+  for (int i = 0; i < item_count; i++) writeVarInt(client_fd, idx_first_item + i);
+  writeVarInt(client_fd, 4);
   send_all(client_fd, "give", 4);
 
-  // Node 2: literal "shears" (exec)
-  writeByte(client_fd, 0x05); // type=literal + executable
-  writeVarInt(client_fd, 0); // no children
-  writeVarInt(client_fd, 6);
-  send_all(client_fd, "shears", 6);
+  // Item nodes (indices idx_first_item .. idx_first_item + item_count - 1)
+  for (int i = 0; i < item_count; i++) {
+    const char *name = item_names[i];
+    int len = (int)strlen(name);
+    writeByte(client_fd, 0x05); // literal + executable
+    writeVarInt(client_fd, 0); // no children
+    writeVarInt(client_fd, len);
+    send_all(client_fd, name, len);
+  }
 
-  // Node 3: literal "spawn"
+  // Node: literal "spawn"
   writeByte(client_fd, 0x01); // type=literal
-  writeVarInt(client_fd, 1);
-  writeVarInt(client_fd, 4);
+  writeVarInt(client_fd, ent_count);
+  for (int i = 0; i < ent_count; i++) writeVarInt(client_fd, idx_first_entity + i);
   writeVarInt(client_fd, 5);
   send_all(client_fd, "spawn", 5);
 
-  // Node 4: literal "sheep" (exec)
-  writeByte(client_fd, 0x05); // type=literal + executable
-  writeVarInt(client_fd, 0);
-  writeVarInt(client_fd, 5);
-  send_all(client_fd, "sheep", 5);
+  // Entity nodes (indices idx_first_entity ..)
+  for (int i = 0; i < ent_count; i++) {
+    const char *name = entity_type_names[i];
+    int len = (int)strlen(name);
+    writeByte(client_fd, 0x05); // literal + executable
+    writeVarInt(client_fd, 0); // no children
+    writeVarInt(client_fd, len);
+    send_all(client_fd, name, len);
+  }
 
   // Root index
-  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, idx_root);
 
   return 0;
 }
