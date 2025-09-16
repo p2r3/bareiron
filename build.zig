@@ -13,6 +13,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    exe.linkLibC();
+
     exe.root_module.addCSourceFiles(.{
         .files = &.{
             "src/dispatch.c",
