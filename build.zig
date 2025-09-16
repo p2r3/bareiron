@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addCSourceFiles(.{
         .files = &.{
-            "src/c_main.c",
+            "src/dispatch.c",
             "src/crafting.c",
             "src/globals.c",
             "src/packets.c",
