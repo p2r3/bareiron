@@ -1,6 +1,60 @@
 const std = @import("std");
 const c = @import("c_api.zig").c;
+const recipes_mod = @import("recipes.zig");
+const Recipe = recipes_mod.Recipe;
 
+/// Checks a shaped recipe against the player's grid at a specific offset.
+/// This function verifies two things:
+/// 1. The items in the grid match the recipe's shape at the given position.
+/// 2. There are no other items on the grid that are not part of the recipe.
+fn checkShapedMatchAt(
+    grid: [9]u16,
+    recipe: Recipe,
+    start_row: u8,
+    start_col: u8,
+) bool {
+    // Create a temporary copy of the grid to mark off items as they are matched.
+    var temp_grid = grid;
+
+    // Iterate through the recipe's shape (defined by its width and height).
+    var r_row: u8 = 0;
+    while (r_row < recipe.height) : (r_row += 1) {
+        var r_col: u8 = 0;
+        while (r_col < recipe.width) : (r_col += 1) {
+            const recipe_idx = r_row * recipe.width + r_col;
+            const grid_idx = (start_row + r_row) * 3 + (start_col + r_col);
+
+            const recipe_item = recipe.shape[recipe_idx];
+            const grid_item = grid[grid_idx];
+
+            // If the recipe specifies an item but the grid slot is different, it's not a match.
+            if (recipe_item != 0 and recipe_item != grid_item) {
+                return false;
+            }
+
+            // If the recipe specifies an empty slot but the grid has an item, it's not a match.
+            if (recipe_item == 0 and grid_item != 0) {
+                return false;
+            }
+
+            // If they match, mark this grid slot as "accounted for" in our temporary grid.
+            if (recipe_item != 0) {
+                temp_grid[grid_idx] = 0;
+            }
+        }
+    }
+
+    // After checking the recipe shape, ensure the rest of the grid is empty.
+    // This prevents recipes from matching if there are extra, unrelated items.
+    for (temp_grid) |item| {
+        if (item != 0) return false;
+    }
+
+    return true;
+}
+
+/// Determines the output of the player's crafting grid.
+/// This function is exported to be called from C code.
 pub export fn getCraftingOutputC(
     _: *c.ServerContext,
     player: *c.PlayerData,
@@ -8,333 +62,80 @@ pub export fn getCraftingOutputC(
     item: *u16,
 ) void {
     var filled: u8 = 0;
-    var first: u8 = 10;
-    var identical = true;
+    var first_item: u16 = 0;
+    var all_identical = true;
 
-    var i: u8 = 0;
-    while (i < 9) : (i += 1) {
-        if (player.craft_items[i] != 0) {
+    // Analyze the player's crafting grid to get basic info.
+    for (player.craft_items) |grid_item| {
+        if (grid_item != 0) {
             filled += 1;
-            if (first == 10) {
-                first = i;
-            } else if (player.craft_items[i] != player.craft_items[first]) {
-                identical = false;
+            if (first_item == 0) {
+                first_item = grid_item;
+            } else if (grid_item != first_item) {
+                all_identical = false;
             }
         }
     }
 
+    // If the grid is empty, there's no output.
     if (filled == 0) {
         item.* = 0;
         count.* = 0;
         return;
     }
 
-    const first_item: u16 = player.craft_items[first];
-    const first_col: u8 = first % 3;
-    const first_row: u8 = first / 3;
-
-    switch (filled) {
-        0 => {
-            item.* = 0;
-            count.* = 0;
-            return;
-        },
-        1 => {
-            switch (first_item) {
-                c.I_oak_log => {
-                    item.* = c.I_oak_planks;
-                    count.* = 4;
-                    return;
-                },
-                c.I_oak_planks => {
-                    item.* = c.I_oak_button;
-                    count.* = 1;
-                    return;
-                },
-                c.I_iron_block => {
-                    item.* = c.I_iron_ingot;
-                    count.* = 9;
-                    return;
-                },
-                c.I_gold_block => {
-                    item.* = c.I_gold_ingot;
-                    count.* = 9;
-                    return;
-                },
-                c.I_diamond_block => {
-                    item.* = c.I_diamond;
-                    count.* = 9;
-                    return;
-                },
-                c.I_redstone_block => {
-                    item.* = c.I_redstone;
-                    count.* = 9;
-                    return;
-                },
-                c.I_coal_block => {
-                    item.* = c.I_coal;
-                    count.* = 9;
-                    return;
-                },
-                c.I_copper_block => {
-                    item.* = c.I_copper_ingot;
-                    count.* = 9;
-                    return;
-                },
-                else => {},
-            }
-        },
-        2 => {
-            switch (first_item) {
-                c.I_oak_planks => {
-                    if (first_col != 2 and player.craft_items[first + 1] == c.I_oak_planks) {
-                        item.* = c.I_oak_pressure_plate;
-                        count.* = 1;
-                        return;
-                    } else if (first_row != 2 and player.craft_items[first + 3] == c.I_oak_planks) {
-                        item.* = c.I_stick;
-                        count.* = 4;
-                        return;
-                    }
-                },
-                c.I_charcoal, c.I_coal => {
-                    if (first_row != 2 and player.craft_items[first + 3] == c.I_stick) {
-                        item.* = c.I_torch;
-                        count.* = 4;
-                        return;
-                    }
-                },
-                c.I_iron_ingot => {
-                    if ((first_row != 2 and first_col != 2 and player.craft_items[first + 4] == c.I_iron_ingot) or
-                        (first_row != 2 and first_col != 0 and player.craft_items[first + 2] == c.I_iron_ingot))
-                    {
-                        item.* = c.I_shears;
-                        count.* = 1;
-                        return;
-                    }
-                },
-                else => {},
-            }
-        },
-        3 => {
-            switch (first_item) {
-                c.I_oak_planks, c.I_cobblestone, c.I_stone, c.I_snow_block => {
-                    if (first_col == 0 and player.craft_items[first + 1] == first_item and player.craft_items[first + 2] == first_item) {
-                        if (first_item == c.I_oak_planks) item.* = c.I_oak_slab else if (first_item == c.I_cobblestone) item.* = c.I_cobblestone_slab else if (first_item == c.I_stone) item.* = c.I_stone_slab else if (first_item == c.I_snow_block) item.* = c.I_snow;
-                        count.* = 6;
-                        return;
-                    }
-                },
-                else => {},
-            }
-            switch (first_item) {
-                c.I_oak_planks, c.I_cobblestone, c.I_iron_ingot, c.I_gold_ingot, c.I_diamond, c.I_netherite_ingot => {
-                    if (first_row == 0 and player.craft_items[first + 3] == c.I_stick and player.craft_items[first + 6] == c.I_stick) {
-                        if (first_item == c.I_oak_planks) item.* = c.I_wooden_shovel else if (first_item == c.I_cobblestone) item.* = c.I_stone_shovel else if (first_item == c.I_iron_ingot) item.* = c.I_iron_shovel else if (first_item == c.I_gold_ingot) item.* = c.I_golden_shovel else if (first_item == c.I_diamond) item.* = c.I_diamond_shovel else if (first_item == c.I_netherite_ingot) item.* = c.I_netherite_shovel;
-                        count.* = 1;
-                        return;
-                    }
-                    if (first_row == 0 and player.craft_items[first + 3] == first_item and player.craft_items[first + 6] == c.I_stick) {
-                        if (first_item == c.I_oak_planks) item.* = c.I_wooden_sword else if (first_item == c.I_cobblestone) item.* = c.I_stone_sword else if (first_item == c.I_iron_ingot) item.* = c.I_iron_sword else if (first_item == c.I_gold_ingot) item.* = c.I_golden_sword else if (first_item == c.I_diamond) item.* = c.I_diamond_sword else if (first_item == c.I_netherite_ingot) item.* = c.I_netherite_sword;
-                        count.* = 1;
-                        return;
-                    }
-                },
-                else => {},
-            }
-        },
-        4 => {
-            switch (first_item) {
-                c.I_oak_planks, c.I_oak_log, c.I_snowball => {
-                    if (first_col != 2 and first_row != 2 and player.craft_items[first + 1] == first_item and player.craft_items[first + 3] == first_item and player.craft_items[first + 4] == first_item) {
-                        if (first_item == c.I_oak_planks) {
-                            item.* = c.I_crafting_table;
-                            count.* = 1;
-                        } else if (first_item == c.I_oak_log) {
-                            item.* = c.I_oak_wood;
-                            count.* = 3;
-                        } else if (first_item == c.I_snowball) {
-                            item.* = c.I_snow_block;
-                            count.* = 3;
-                        }
-                        return;
-                    }
-                },
-                c.I_leather, c.I_iron_ingot, c.I_gold_ingot, c.I_diamond, c.I_netherite_ingot => {
-                    if (first_col == 0 and first_row < 2 and player.craft_items[first + 2] == first_item and player.craft_items[first + 3] == first_item and player.craft_items[first + 5] == first_item) {
-                        if (first_item == c.I_leather) item.* = c.I_leather_boots else if (first_item == c.I_iron_ingot) item.* = c.I_iron_boots else if (first_item == c.I_gold_ingot) item.* = c.I_golden_boots else if (first_item == c.I_diamond) item.* = c.I_diamond_boots else if (first_item == c.I_netherite_ingot) item.* = c.I_netherite_boots;
-                        count.* = 1;
-                        return;
-                    }
-                },
-                else => {},
-            }
-        },
-        5 => {
-            switch (first_item) {
-                c.I_oak_planks, c.I_cobblestone => {
-                    if (first == 0 and player.craft_items[first + 1] == first_item and player.craft_items[first + 2] == first_item and player.craft_items[first + 4] == c.I_stick and player.craft_items[first + 7] == c.I_stick) {
-                        if (first_item == c.I_oak_planks) item.* = c.I_wooden_pickaxe else if (first_item == c.I_cobblestone) item.* = c.I_stone_pickaxe;
-                        count.* = 1;
-                        return;
-                    }
-                    if (first < 2 and player.craft_items[first + 1] == first_item and ((player.craft_items[first + 3] == first_item and player.craft_items[first + 4] == c.I_stick and player.craft_items[first + 7] == c.I_stick) or (player.craft_items[first + 4] == first_item and player.craft_items[first + 3] == c.I_stick and player.craft_items[first + 6] == c.I_stick))) {
-                        if (first_item == c.I_oak_planks) item.* = c.I_wooden_axe else if (first_item == c.I_cobblestone) item.* = c.I_stone_axe;
-                        count.* = 1;
-                        return;
-                    }
-                },
-                c.I_iron_ingot, c.I_gold_ingot, c.I_diamond, c.I_netherite_ingot, c.I_leather => {
-                    if (first_item != c.I_leather) {
-                        if (first == 0 and player.craft_items[first + 1] == first_item and player.craft_items[first + 2] == first_item and player.craft_items[first + 4] == c.I_stick and player.craft_items[first + 7] == c.I_stick) {
-                            if (first_item == c.I_iron_ingot) item.* = c.I_iron_pickaxe else if (first_item == c.I_gold_ingot) item.* = c.I_golden_pickaxe else if (first_item == c.I_diamond) item.* = c.I_diamond_pickaxe else if (first_item == c.I_netherite_ingot) item.* = c.I_netherite_pickaxe;
-                            count.* = 1;
-                            return;
-                        }
-                        if (first < 2 and player.craft_items[first + 1] == first_item and ((player.craft_items[first + 3] == first_item and player.craft_items[first + 4] == c.I_stick and player.craft_items[first + 7] == c.I_stick) or (player.craft_items[first + 4] == first_item and player.craft_items[first + 3] == c.I_stick and player.craft_items[first + 6] == c.I_stick))) {
-                            if (first_item == c.I_iron_ingot) item.* = c.I_iron_axe else if (first_item == c.I_gold_ingot) item.* = c.I_golden_axe else if (first_item == c.I_diamond) item.* = c.I_diamond_axe else if (first_item == c.I_netherite_ingot) item.* = c.I_netherite_axe;
-                            count.* = 1;
-                            return;
-                        }
-                    }
-                    if (first_col == 0 and first_row < 2 and player.craft_items[first + 1] == first_item and player.craft_items[first + 2] == first_item and player.craft_items[first + 3] == first_item and player.craft_items[first + 5] == first_item) {
-                        if (first_item == c.I_leather) item.* = c.I_leather_helmet else if (first_item == c.I_iron_ingot) item.* = c.I_iron_helmet else if (first_item == c.I_gold_ingot) item.* = c.I_golden_helmet else if (first_item == c.I_diamond) item.* = c.I_diamond_helmet else if (first_item == c.I_netherite_ingot) item.* = c.I_netherite_helmet;
-                        count.* = 1;
-                        return;
-                    }
-                },
-                else => {},
-            }
-        },
-        7 => {
-            if (identical and player.craft_items[4] == 0 and player.craft_items[7] == 0) {
-                switch (first_item) {
-                    c.I_leather => {
-                        item.* = c.I_leather_leggings;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_iron_ingot => {
-                        item.* = c.I_iron_leggings;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_gold_ingot => {
-                        item.* = c.I_golden_leggings;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_diamond => {
-                        item.* = c.I_diamond_leggings;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_netherite_ingot => {
-                        item.* = c.I_netherite_leggings;
-                        count.* = 1;
-                        return;
-                    },
-                    else => {},
-                }
-            }
-            if (first_item == c.I_oak_slab and identical and player.craft_items[1] == 0 and player.craft_items[4] == 0) {
-                item.* = c.I_composter;
-                count.* = 1;
+    // The 'inline for' loop iterates over all recipes at COMPILE TIME.
+    // The compiler unrolls this loop and generates a series of direct checks,
+    // which is highly efficient.
+    inline for (recipes_mod.recipes) |recipe| {
+        // --- 1. Check Shapeless Recipes ---
+        // These are simple checks based on item count and type.
+        if (recipe.shapeless_count > 0) {
+            if (filled == recipe.shapeless_count and all_identical and first_item == recipe.shape[0]) {
+                item.* = recipe.output_item;
+                count.* = recipe.output_count;
                 return;
             }
-        },
-        8 => {
-            if (identical) {
-                if (player.craft_items[4] == 0) {
-                    switch (first_item) {
-                        c.I_cobblestone => {
-                            item.* = c.I_furnace;
-                            count.* = 1;
+        }
+        // --- 2. Check Shaped Recipes ---
+        else {
+            // First, do a quick check on the number of ingredients. If it doesn't match
+            // the number of filled slots, we can skip the more expensive shape check.
+            var ingredient_count: u8 = 0;
+            // ================== FIX START ==================
+            for (recipe.shape) |ing| {
+                if (ing != 0) ingredient_count += 1;
+            }
+            // =================== FIX END ===================
+
+            if (filled == ingredient_count) {
+                // Iterate through all possible top-left starting positions for the recipe shape
+                // within the 3x3 grid.
+                const max_start_row = 3 - recipe.height;
+                const max_start_col = 3 - recipe.width;
+                var start_row: u8 = 0;
+                while (start_row <= max_start_row) : (start_row += 1) {
+                    var start_col: u8 = 0;
+                    while (start_col <= max_start_col) : (start_col += 1) {
+                        // Check if the recipe matches at this specific position.
+                        if (checkShapedMatchAt(player.craft_items, recipe, start_row, start_col)) {
+                            item.* = recipe.output_item;
+                            count.* = recipe.output_count;
                             return;
-                        },
-                        c.I_oak_planks => {
-                            item.* = c.I_chest;
-                            count.* = 1;
-                            return;
-                        },
-                        else => {},
-                    }
-                } else if (player.craft_items[1] == 0) {
-                    switch (first_item) {
-                        c.I_leather => {
-                            item.* = c.I_leather_chestplate;
-                            count.* = 1;
-                            return;
-                        },
-                        c.I_iron_ingot => {
-                            item.* = c.I_iron_chestplate;
-                            count.* = 1;
-                            return;
-                        },
-                        c.I_gold_ingot => {
-                            item.* = c.I_golden_chestplate;
-                            count.* = 1;
-                            return;
-                        },
-                        c.I_diamond => {
-                            item.* = c.I_diamond_chestplate;
-                            count.* = 1;
-                            return;
-                        },
-                        c.I_netherite_ingot => {
-                            item.* = c.I_netherite_chestplate;
-                            count.* = 1;
-                            return;
-                        },
-                        else => {},
+                        }
                     }
                 }
             }
-        },
-        9 => {
-            if (identical) {
-                switch (first_item) {
-                    c.I_iron_ingot => {
-                        item.* = c.I_iron_block;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_gold_ingot => {
-                        item.* = c.I_gold_block;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_diamond => {
-                        item.* = c.I_diamond_block;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_redstone => {
-                        item.* = c.I_redstone_block;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_coal => {
-                        item.* = c.I_coal_block;
-                        count.* = 1;
-                        return;
-                    },
-                    c.I_copper_ingot => {
-                        item.* = c.I_copper_block;
-                        count.* = 1;
-                        return;
-                    },
-                    else => {},
-                }
-            }
-        },
-        else => {},
+        }
     }
 
-    count.* = 0;
+    // If the loop finishes without finding a match, there is no output.
     item.* = 0;
+    count.* = 0;
 }
 
+/// Determines the output of the furnace based on the input and fuel.
+/// This function remains unchanged as it is not related to shaped crafting.
 pub export fn getSmeltingOutput(ctx: *c.ServerContext, player: *c.PlayerData) void {
     const material_count = &player.craft_count[0];
     const fuel_count = &player.craft_count[1];
