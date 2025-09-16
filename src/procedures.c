@@ -1018,8 +1018,11 @@ uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
   // Exit early if player is unable to eat
   if (player->hunger >= 20) return false;
 
-  uint16_t *held_item = &player->inventory_items[player->hotbar];
-  uint8_t *held_count = &player->inventory_count[player->hotbar];
+  // The hotbar slot used for eating was stored in flagval_8 when the action started
+  uint8_t eating_slot = player->flagval_8;
+
+  uint16_t *held_item = &player->inventory_items[eating_slot];
+  uint8_t *held_count = &player->inventory_count[eating_slot];
 
   // Exit early if player isn't holding anything
   if (*held_item == 0 || *held_count == 0) return false;
@@ -1058,7 +1061,7 @@ uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
   sc_entityEvent(player->client_fd, player->client_fd, 9);
   sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   {
-    uint8_t client_slot = serverSlotToClientSlot(0, player->hotbar);
+    uint8_t client_slot = serverSlotToClientSlot(0, eating_slot);
     if (client_slot != 255) {
       sc_setContainerSlot(
         player->client_fd, 0,
@@ -1356,6 +1359,8 @@ void handlePlayerUseItem (ServerContext *ctx, PlayerData *player, short x, short
     // Reset eating timer and set eating flag
     player->flagval_16 = 0;
     player->flags |= 0x10;
+    // Store the hotbar slot used to start eating to prevent item loss on slot change
+    player->flagval_8 = player->hotbar;
   } else if (getItemDefensePoints(item_val) != 0) {
     // For some reason, this action is sent twice when looking at a block
     // Ignore the variant that has coordinates
