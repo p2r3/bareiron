@@ -82,6 +82,7 @@ async function extractItemsAndBlocks () {
   // Get registry data for extracting item IDs
   const registriesJSON = JSON.parse(await fs.readFile(`${__dirname}/notchian/generated/reports/registries.json`, "utf8"));
   const itemSource = registriesJSON["minecraft:item"].entries;
+  const entityTypeSource = registriesJSON["minecraft:entity_type"].entries;
   // Retrieve the registry list for blocks too, used later in tags
   const blockRegistrySource = registriesJSON["minecraft:block"].entries;
 
@@ -97,7 +98,7 @@ async function extractItemsAndBlocks () {
   });
 
   // Create name-id pair objects for easier parsing
-  const blocks = {}, items = {};
+  const blocks = {}, items = {}, entityTypes = {};
 
   for (const entry of sortedBlocks) {
     const defaultState = entry[1].states.find(c => c.default);
@@ -128,6 +129,11 @@ async function extractItemsAndBlocks () {
 
   for (const item in itemSource) {
     items[item.replace("minecraft:", "")] = itemSource[item].protocol_id;
+  }
+
+  // Collect entity types by protocol ID as well
+  for (const et in entityTypeSource) {
+    entityTypes[et.replace("minecraft:", "")] = entityTypeSource[et].protocol_id;
   }
 
   /**
@@ -166,7 +172,7 @@ async function extractItemsAndBlocks () {
     blockRegistry[block.replace("minecraft:", "")] = blockRegistrySource[block].protocol_id;
   }
 
-  return { blocks, items, palette, mapping, mappingWithOverrides, blockRegistry };
+  return { blocks, items, entityTypes, palette, mapping, mappingWithOverrides, blockRegistry };
 
 }
 
@@ -407,6 +413,14 @@ async function convert () {
 
   const networkBlockPalette = toVarIntBuffer(Object.values(itemsAndBlocks.palette));
 
+  // Prepare runtime lookup arrays (sorted by name for predictable order)
+  const itemPairs = Object.entries(itemsAndBlocks.items).sort((a, b) => a[0].localeCompare(b[0]));
+  const entityPairs = Object.entries(itemsAndBlocks.entityTypes).sort((a, b) => a[0].localeCompare(b[0]));
+  const itemNamesC = itemPairs.map(([name]) => `"${name}"`).join(", ");
+  const itemIdsC = itemPairs.map(([, id]) => id).join(", ");
+  const entityNamesC = entityPairs.map(([name]) => `"${name}"`).join(", ");
+  const entityIdsC = entityPairs.map(([, id]) => id).join(", ");
+
   const sourceCode = `\
 #include <stdint.h>
 #include "registries.h"
@@ -437,6 +451,15 @@ uint8_t I_to_B (uint16_t item) {
   }
   return 0;
 }
+
+// Runtime lookup arrays (names without namespace)
+const char *item_names[] = { ${itemNamesC} };
+uint16_t item_ids[] = { ${itemIdsC} };
+const int ITEM_NAME_COUNT = ${itemPairs.length};
+
+const char *entity_type_names[] = { ${entityNamesC} };
+uint16_t entity_type_ids[] = { ${entityIdsC} };
+const int ENTITY_TYPE_COUNT = ${entityPairs.length};
 `;
 
   const headerCode = `\
@@ -453,6 +476,15 @@ extern uint16_t block_palette[256]; // Block palette
 extern uint8_t network_block_palette[${networkBlockPalette.length}]; // Block palette as VarInt buffer
 extern uint16_t B_to_I[256]; // Block-to-item mapping
 uint8_t I_to_B (uint16_t item); // Item-to-block mapping
+
+// Runtime lookup arrays generated from registries (names without namespace)
+extern const char *item_names[];
+extern uint16_t item_ids[];
+extern const int ITEM_NAME_COUNT;
+
+extern const char *entity_type_names[];
+extern uint16_t entity_type_ids[];
+extern const int ENTITY_TYPE_COUNT;
 
 // Block identifiers
 ${Object.keys(itemsAndBlocks.palette).map((c, i) => `#define B_${c} ${i}`).join("\n")}
