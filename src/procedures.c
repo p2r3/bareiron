@@ -1387,7 +1387,9 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
       );
     }
 
-    broadcastMobMetadata(-1, i);
+    // Freshly spawned mobs currently don't need metadata updates.
+    // If this changes, uncomment this line.
+    // broadcastMobMetadata(-1, i);
 
     break;
   }
