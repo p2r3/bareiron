@@ -77,6 +77,7 @@ void handlePacket (ServerContext *ctx, int client_fd, int length, int packet_id,
 					if ((ctx->mob_data[i].data & 31) == 0) continue;
 					memcpy(uuid + 4, &i, 4);
 					sc_spawnEntity(client_fd, -2 - i, uuid, ctx->mob_data[i].type, ctx->mob_data[i].x, ctx->mob_data[i].y, ctx->mob_data[i].z, 0, 0);
+					broadcastMobMetadata(ctx, client_fd, -2 - i);
 				}
 				// Clear loading flag and broadcast join now
 				handlePlayerJoin(ctx, player);
@@ -108,6 +109,7 @@ void handlePacket (ServerContext *ctx, int client_fd, int length, int packet_id,
 						if ((ctx->mob_data[i].data & 31) == 0) continue;
 						memcpy(uuid + 4, &i, 4);
 						sc_spawnEntity(client_fd, -2 - i, uuid, ctx->mob_data[i].type, ctx->mob_data[i].x, ctx->mob_data[i].y, ctx->mob_data[i].z, 0, 0);
+						broadcastMobMetadata(ctx, client_fd, -2 - i);
 					}
 					// Clear loading flag and broadcast join now
 					handlePlayerJoin(ctx, player);

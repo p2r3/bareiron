@@ -15,6 +15,10 @@
 #include "serialize.h"
 #include "procedures.h"
 
+#ifdef ENABLE_PICKUP_ANIMATION
+void playPickupAnimation (PlayerData *player, uint16_t item, double x, double y, double z);
+#endif
+
 static inline uint16_t read_u16_unaligned(const void *p) {
   uint16_t v;
   memcpy(&v, p, sizeof(v));
@@ -367,9 +371,9 @@ void broadcastPlayerMetadata (ServerContext *ctx, PlayerData *player) {
   uint8_t sneaking = (player->flags & 0x04) != 0;
   uint8_t sprinting = (player->flags & 0x08) != 0;
 
-  uint8_t player_bit_mask = 0;
-  if (sneaking) player_bit_mask |= 0x02;
-  if (sprinting) player_bit_mask |= 0x08;
+  uint8_t entity_bit_mask = 0;
+  if (sneaking) entity_bit_mask |= 0x02;
+  if (sprinting) entity_bit_mask |= 0x08;
 
   int pose = 0;
   if (sneaking) pose = 5;
@@ -378,7 +382,7 @@ void broadcastPlayerMetadata (ServerContext *ctx, PlayerData *player) {
     {
       0,               // Index (Bit Mask)
       0,               // Type (Byte)
-      player_bit_mask, // Value
+      entity_bit_mask, // Value
     },
     {
       6,    // Index (Pose),
@@ -396,6 +400,87 @@ void broadcastPlayerMetadata (ServerContext *ctx, PlayerData *player) {
     if (other_player->flags & 0x20) continue;
 
     sc_setEntityMetadata(client_fd, player->client_fd, metadata, 2);
+  }
+}
+
+// Sends a mob's entity metadata to the given player.
+// If client_fd is -1, broadcasts to all players.
+void broadcastMobMetadata (ServerContext *ctx, int client_fd, int entity_id) {
+
+  MobData *mob = &ctx->mob_data[-entity_id - 2];
+  EntityData metadata[1];
+  size_t length = 0;
+
+  switch (mob->type) {
+    case 106: // Sheep
+      // Only send metadata if the sheep is sheared
+      if (!((mob->data >> 5) & 1)) return;
+
+      metadata[0].index = 17; // Sheep bit mask index
+      metadata[0].type = 0;   // Byte
+      metadata[0].value.byte = 0x10; // Sheared flag
+      length = 1;
+
+      break;
+
+    default: return; // No metadata for other mob types yet
+  }
+
+  if (length == 0) return;
+
+  if (client_fd == -1) {
+    for (int i = 0; i < MAX_PLAYERS; i ++) {
+      PlayerData* player = &ctx->player_data[i];
+      if (player->client_fd == -1 || (player->flags & 0x20)) continue;
+      sc_setEntityMetadata(player->client_fd, entity_id, metadata, length);
+    }
+  } else {
+    sc_setEntityMetadata(client_fd, entity_id, metadata, length);
+  }
+}
+
+void interactEntity (ServerContext *ctx, int entity_id, int interactor_id) {
+
+  PlayerData *player;
+  if (getPlayerData(ctx, interactor_id, &player)) return;
+
+  // This function only handles mobs
+  if (entity_id >= 0) return;
+  MobData *mob = &ctx->mob_data[-entity_id - 2];
+
+  switch (mob->type) {
+    case 106: { // Sheep
+      // Interaction must be with shears
+      if (player->inventory_items[player->hotbar] != I_shears) return;
+
+      // Check if sheep has already been sheared
+      if ((mob->data >> 5) & 1) return;
+
+      // Set sheared flag to true
+      mob->data |= 1 << 5;
+
+      bumpToolDurability(ctx, player);
+
+      #ifdef ENABLE_PICKUP_ANIMATION
+      playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
+      #endif
+
+      // Give player 1-2 wool
+      uint8_t item_count = 1 + (fast_rand(ctx) & 1);
+      givePlayerItem(player, I_white_wool, item_count);
+
+      // Broadcast the player's swing animation
+      for (int i = 0; i < MAX_PLAYERS; i ++) {
+        PlayerData* p = &ctx->player_data[i];
+        if (p->client_fd == -1 || (p->flags & 0x20)) continue;
+        sc_entityAnimation(p->client_fd, interactor_id, 0);
+      }
+
+      // Update the sheep's appearance for all players
+      broadcastMobMetadata(ctx, -1, entity_id);
+      break;
+    }
+    default: break;
   }
 }
 
