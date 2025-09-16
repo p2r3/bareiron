@@ -114,7 +114,13 @@ void handlePacket (ServerContext *ctx, int client_fd, int length, int packet_id,
 					// Clear loading flag and broadcast join now
 					handlePlayerJoin(ctx, player);
 				}
+			} else if (getClientState(ctx, client_fd) == STATE_PLAY) {
+				cs_chatCommand(ctx, client_fd);
 			}
+			break;
+
+		case 0x06:
+			if (getClientState(ctx, client_fd) == STATE_PLAY) cs_chatCommand(ctx, client_fd);
 			break;
 
 		case 0x08:

@@ -15,6 +15,9 @@ comptime {
 comptime {
     _ = @import("tools.zig");
 }
+comptime {
+    _ = @import("commands.zig");
+}
 const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 

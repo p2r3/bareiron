@@ -1150,6 +1150,15 @@ int sc_systemChat (int client_fd, char* message, uint16_t len) {
   return 0;
 }
 
+// C->S Chat Command (serverbound)
+int cs_chatCommand (ServerContext *ctx, int client_fd) {
+  // In modern clients, slash-commands are sent as a command string without the leading '/'
+  readString(ctx, client_fd);
+  // Delegate to Zig command handler (ctx->recv_buffer holds the string)
+  handleChatCommand(ctx, client_fd);
+  return 0;
+}
+
 // C->S Chat Message
 int cs_chat (ServerContext *ctx, int client_fd) {
 
@@ -1158,25 +1167,42 @@ int cs_chat (ServerContext *ctx, int client_fd) {
   PlayerData *player;
   if (getPlayerData(ctx, client_fd, &player)) return 1;
 
+  // Debug: log the received chat buffer
+  printf("[DEBUG] chat raw: '%s'\n", (char *)ctx->recv_buffer);
+
+  // Check if the message is a command
+  if (ctx->recv_buffer[0] == '/') {
+    // Shift buffer left by one to remove the '/'
+    memmove(ctx->recv_buffer, ctx->recv_buffer + 1, ctx->recv_count);
+    // Delegate to Zig command handler
+    handleChatCommand(ctx, client_fd);
+
+    // Consume the rest of the packet metadata
+    readUint64(ctx, client_fd); // Ignore timestamp
+    readUint64(ctx, client_fd); // Ignore salt
+    uint8_t has_signature = readByte(ctx, client_fd);
+    if (has_signature) recv_all(client_fd, ctx->recv_buffer, 256, false);
+    readVarInt(ctx, client_fd); // Ignore message count
+    recv_all(client_fd, ctx->recv_buffer, 4, false); // Ignore ack bitmask/checksum
+
+    return 0; // don't broadcast as chat
+  }
+
+  // --- Original chat broadcasting logic ---
   size_t message_len = strlen((char *)ctx->recv_buffer);
   uint8_t name_len = strlen(player->name);
 
-  // To be safe, cap messages to 32 bytes before the buffer length
   if (message_len > 224) {
     ctx->recv_buffer[224] = '\0';
     message_len = 224;
   }
 
-  // Shift message contents forward to make space for player name tag
   memmove(ctx->recv_buffer + name_len + 3, ctx->recv_buffer, message_len + 1);
-  // Copy player name to index 1
   memcpy(ctx->recv_buffer + 1, player->name, name_len);
-  // Surround player name with brackets and a space
   ctx->recv_buffer[0] = '<';
   ctx->recv_buffer[name_len + 1] = '>';
   ctx->recv_buffer[name_len + 2] = ' ';
 
-  // Forward message to all connected players
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (ctx->player_data[i].client_fd == -1) continue;
     if (ctx->player_data[i].flags & 0x20) continue;
@@ -1185,14 +1211,10 @@ int cs_chat (ServerContext *ctx, int client_fd) {
 
   readUint64(ctx, client_fd); // Ignore timestamp
   readUint64(ctx, client_fd); // Ignore salt
-
-  // Ignore signature (if any)
   uint8_t has_signature = readByte(ctx, client_fd);
   if (has_signature) recv_all(client_fd, ctx->recv_buffer, 256, false);
-
   readVarInt(ctx, client_fd); // Ignore message count
-  // Ignore acknowledgement bitmask and checksum
-  recv_all(client_fd, ctx->recv_buffer, 4, false);
+  recv_all(client_fd, ctx->recv_buffer, 4, false); // Ignore ack bitmask/checksum
 
   return 0;
 }

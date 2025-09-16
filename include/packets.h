@@ -20,6 +20,7 @@ int cs_clickContainer (ServerContext *ctx, int client_fd);
 int cs_closeContainer (ServerContext *ctx, int client_fd);
 int cs_clientStatus (ServerContext *ctx, int client_fd);
 int cs_chat (ServerContext *ctx, int client_fd);
+int cs_chatCommand (ServerContext *ctx, int client_fd);
 int cs_interact (ServerContext *ctx, int client_fd);
 int cs_playerInput (ServerContext *ctx, int client_fd);
 int cs_playerCommand (ServerContext *ctx, int client_fd);

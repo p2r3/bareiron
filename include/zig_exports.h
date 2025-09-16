@@ -8,5 +8,6 @@
 // actual code is somewhere else (in the Zig object file)."
 extern void getCraftingOutputC(ServerContext *ctx, PlayerData *player, uint8_t *count, uint16_t *item);
 extern void getSmeltingOutput(ServerContext *ctx, PlayerData *player);
+extern void handleChatCommand(ServerContext *ctx, int client_fd);
 
 #endif
