@@ -5,3 +5,5 @@ bareiron.exe
 src/registries.c
 include/registries.h
 *.bin
+.zig-cache
+zig-out

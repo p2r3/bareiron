@@ -24,6 +24,15 @@
 #include "procedures.h"
 #include "packets.h"
 
+static inline uint16_t read_u16_unaligned(const void *p) {
+  uint16_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+static inline void write_u16_unaligned(void *p, uint16_t v) {
+  memcpy(p, &v, sizeof(v));
+}
+
 // S->C Status Response (server list ping)
 int sc_statusResponse (int client_fd) {
 
@@ -489,9 +498,13 @@ int cs_playerAction (int client_fd) {
   uint8_t action = readByte(client_fd);
 
   int64_t pos = readInt64(client_fd);
-  int x = pos >> 38;
-  int y = pos << 52 >> 52;
-  int z = pos << 26 >> 38;
+  uint64_t u = (uint64_t)pos;
+  int x = (int)((u >> 38) & 0x3FFFFFF);
+  if (x & 0x2000000) x -= 0x4000000;
+  int y = (int)(u & 0xFFF);
+  if (y & 0x800) y -= 0x1000;
+  int z = (int)((u >> 12) & 0x3FFFFFF);
+  if (z & 0x2000000) z -= 0x4000000;
 
   readByte(client_fd); // ignore face
 
@@ -546,9 +559,13 @@ int cs_useItemOn (int client_fd) {
   uint8_t hand = readByte(client_fd);
 
   int64_t pos = readInt64(client_fd);
-  int x = pos >> 38;
-  int y = pos << 52 >> 52;
-  int z = pos << 26 >> 38;
+  uint64_t u = (uint64_t)pos;
+  int x = (int)((u >> 38) & 0x3FFFFFF);
+  if (x & 0x2000000) x -= 0x4000000;
+  int y = (int)(u & 0xFFF);
+  if (y & 0x800) y -= 0x1000;
+  int z = (int)((u >> 12) & 0x3FFFFFF);
+  if (z & 0x2000000) z -= 0x4000000;
 
   uint8_t face = readByte(client_fd);
 
@@ -593,7 +610,23 @@ int cs_clickContainer (int client_fd) {
   if (mode == 4 && clicked_slot != -999) {
     // when using drop button, re-sync the respective slot
     uint8_t slot = clientSlotToServerSlot(window_id, clicked_slot);
-    sc_setContainerSlot(client_fd, window_id, clicked_slot, player->inventory_count[slot], player->inventory_items[slot]);
+    if (slot != 255) {
+      uint16_t curr_item = 0;
+      uint8_t curr_count = 0;
+      #ifdef ALLOW_CHESTS
+      if (window_id == 2 && slot > 40) {
+        // chest case handled elsewhere; skip resync here
+      } else
+      #endif
+      if (slot > 40) {
+        curr_item = read_u16_unaligned(&player->craft_items[slot - 41]);
+        curr_count = player->craft_count[slot - 41];
+      } else {
+        curr_item = read_u16_unaligned(&player->inventory_items[slot]);
+        curr_count = player->inventory_count[slot];
+      }
+      sc_setContainerSlot(client_fd, window_id, clicked_slot, curr_count, curr_item);
+    }
     apply_changes = false;
   } else if (mode == 0 && clicked_slot == -999) {
     // when clicking outside inventory, return the dropped item to the player
@@ -636,14 +669,24 @@ int cs_clickContainer (int client_fd) {
       p_count = storage_ptr + (slot - 41) * 3 + 2;
     } else
     #endif
-    {
+    if (slot == 255) {
+      // invalid slot, set to dummy locals to avoid UB
+      static uint16_t dummy_item;
+      static uint8_t dummy_count;
+      p_item = &dummy_item;
+      p_count = &dummy_count;
+    } else if (slot > 40) {
+      // overflow slots map into crafting grid arrays
+      p_item = &player->craft_items[slot - 41];
+      p_count = &player->craft_count[slot - 41];
+    } else {
       p_item = &player->inventory_items[slot];
       p_count = &player->inventory_count[slot];
     }
 
     if (!readByte(client_fd)) { // no item?
       if (slot != 255 && apply_changes) {
-        *p_item = 0;
+        write_u16_unaligned(p_item, 0);
         *p_count = 0;
         #ifdef ALLOW_CHESTS
         if (window_id == 2 && slot > 40) {
@@ -663,8 +706,8 @@ int cs_clickContainer (int client_fd) {
     tmp = readVarInt(client_fd);
     recv_all(client_fd, recv_buffer, tmp, false);
 
-    if (count > 0 && apply_changes) {
-      *p_item = item;
+    if (count > 0 && apply_changes && slot != 255) {
+      write_u16_unaligned(p_item, item);
       *p_count = count;
       #ifdef ALLOW_CHESTS
       if (window_id == 2 && slot > 40) {
@@ -682,7 +725,7 @@ int cs_clickContainer (int client_fd) {
   } else if (window_id == 14) { // furnace
     getSmeltingOutput(player);
     for (int i = 0; i < 3; i ++) {
-      sc_setContainerSlot(client_fd, window_id, i, player->craft_count[i], player->craft_items[i]);
+      sc_setContainerSlot(client_fd, window_id, i, player->craft_count[i], read_u16_unaligned(&player->craft_items[i]));
     }
   }
 
@@ -842,7 +885,7 @@ int cs_closeContainer (int client_fd) {
   // or, in the case of chests, simply clear the storage pointer
   for (uint8_t i = 0; i < 9; i ++) {
     if (window_id != 2) {
-      givePlayerItem(player, player->craft_items[i], player->craft_count[i]);
+      givePlayerItem(player, read_u16_unaligned(&player->craft_items[i]), player->craft_count[i]);
       uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
       if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
     }

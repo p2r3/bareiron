@@ -18,6 +18,16 @@
 
 int client_states[MAX_PLAYERS * 2];
 
+static inline uint16_t read_u16_unaligned(const void *p) {
+  uint16_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+static inline void write_u16_unaligned(void *p, uint16_t v) {
+  memcpy(p, &v, sizeof(v));
+}
+
 void setClientState (int client_fd, int new_state) {
   // Look for a client state with a matching file descriptor
   for (int i = 0; i < MAX_PLAYERS * 2; i += 2) {
@@ -1162,6 +1172,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   // Get held item properties
   uint8_t *count = &player->inventory_count[player->hotbar];
   uint16_t *item = &player->inventory_items[player->hotbar];
+  uint16_t item_val = read_u16_unaligned(item);
 
   // Check interaction with containers when not sneaking
   if (!(player->flags & 0x04) && face != 255) {
@@ -1171,15 +1182,18 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     } else if (target == B_furnace) {
       sc_openScreen(player->client_fd, 14, "Furnace", 7);
       return;
-    } else if (target == B_composter) {
+  } else if (target == B_composter) {
       // Check if the player is holding anything
       if (*count == 0) return;
       // Check if the item is a valid compost item
-      uint32_t compost_chance = isCompostItem(*item);
+      uint32_t compost_chance = isCompostItem(item_val);
       if (compost_chance != 0) {
         // Take away composted item
-        if ((*count -= 1) == 0) *item = 0;
-        sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+        if ((*count -= 1) == 0) {
+          item_val = 0;
+          write_u16_unaligned(item, 0);
+        }
+        sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item_val);
         // Test compost chance and give bone meal on success
         if (fast_rand() < compost_chance) {
           givePlayerItem(player, I_bone_meal, 1);
@@ -1225,13 +1239,16 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   if (*count == 0) return;
 
   // Check special item handling
-  if (*item == I_bone_meal) {
+  if (item_val == I_bone_meal) {
     uint8_t target_below = getBlockAt(x, y - 1, z);
     if (target == B_oak_sapling) {
       // Consume the bone meal (yes, even before checks)
       // Wasting bone meal on misplanted saplings is vanilla behavior
-      if ((*count -= 1) == 0) *item = 0;
-      sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+      if ((*count -= 1) == 0) {
+        item_val = 0;
+        write_u16_unaligned(item, 0);
+      }
+  sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item_val);
       if ( // Saplings can only grow when placed on these blocks
         target_below == B_dirt ||
         target_below == B_grass_block ||
@@ -1246,19 +1263,19 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     // Reset eating timer and set eating flag
     player->flagval_16 = 0;
     player->flags |= 0x10;
-  } else if (getItemDefensePoints(*item) != 0) {
+  } else if (getItemDefensePoints(item_val) != 0) {
     // For some reason, this action is sent twice when looking at a block
     // Ignore the variant that has coordinates
     if (face != 255) return;
     // Swap to held piece of armor
-    uint8_t slot = getArmorItemSlot(*item);
-    uint16_t prev_item = player->inventory_items[slot];
-    player->inventory_items[slot] = *item;
+    uint8_t slot = getArmorItemSlot(item_val);
+    uint16_t prev_item = read_u16_unaligned(&player->inventory_items[slot]);
+    write_u16_unaligned(&player->inventory_items[slot], item_val);
     player->inventory_count[slot] = 1;
-    player->inventory_items[player->hotbar] = prev_item;
+    write_u16_unaligned(&player->inventory_items[player->hotbar], prev_item);
     player->inventory_count[player->hotbar] = 1;
     // Update client inventory
-    sc_setContainerSlot(player->client_fd, -2, serverSlotToClientSlot(0, slot), 1, *item);
+    sc_setContainerSlot(player->client_fd, -2, serverSlotToClientSlot(0, slot), 1, item_val);
     sc_setContainerSlot(player->client_fd, -2, serverSlotToClientSlot(0, player->hotbar), 1, prev_item);
     return;
   }
@@ -1267,7 +1284,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   if (face == 255) return;
 
   // If the selected item doesn't correspond to a block, exit
-  uint8_t block = I_to_B(*item);
+  uint8_t block = I_to_B(item_val);
   if (block == 0) return;
 
   switch (face) {
@@ -1296,7 +1313,10 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     // Decrease item amount in selected slot
     *count -= 1;
     // Clear item id in slot if amount is zero
-    if (*count == 0) *item = 0;
+    if (*count == 0) {
+      item_val = 0;
+      write_u16_unaligned(item, 0);
+    }
     // Calculate fluid flow
     #ifdef DO_FLUID_FLOW
       checkFluidUpdate(x, y + 1, z, getBlockAt(x, y + 1, z));
@@ -1308,7 +1328,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   }
 
   // Sync hotbar contents to player
-  sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+  sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item_val);
 
 }
 

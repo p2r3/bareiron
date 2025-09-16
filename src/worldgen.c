@@ -348,7 +348,7 @@ ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
       mod_abs(feature.x, CHUNK_SIZE), mod_abs(feature.z, CHUNK_SIZE),
       anchor.x, anchor.z, anchor.hash, anchor.biome
     ) + 1;
-    feature.variant = (anchor.hash >> (feature.x + feature.z)) & 1;
+  feature.variant = (anchor.hash >> ((feature.x + feature.z) & 31)) & 1;
   }
 
   return feature;

@@ -19,6 +19,12 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
     }
   }
 
+  if (filled == 0) {
+    *item = 0;
+    *count = 0;
+    return;
+  }
+
   uint16_t first_item = player->craft_items[first];
   uint8_t first_col = first % 3, first_row = first / 3;
 
