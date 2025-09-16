@@ -418,12 +418,11 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
       if (!((mob->data >> 5) & 1)) // Don't send metadata if sheep isn't sheared
         return;
 
-      metadata = (EntityData[]){
-        {
-          17,            // Index (Sheep Bit Mask),
-          0,             // Type (Byte),
-          (uint8_t)0x10, // Value
-        }
+      metadata = malloc(sizeof *metadata);
+      metadata[0] = (EntityData){
+        17,            // Index (Sheep Bit Mask),
+        0,             // Type (Byte),
+        (uint8_t)0x10, // Value
       };
       length = 1;
 
@@ -445,6 +444,8 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
   } else {
     sc_setEntityMetadata(client_fd, entity_id, metadata, length);
   }
+
+  free(metadata);
 }
 
 uint8_t getBlockChange (short x, uint8_t y, short z) {
