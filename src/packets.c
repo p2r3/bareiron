@@ -1344,3 +1344,76 @@ int sc_registries (int client_fd) {
   return 0;
 
 }
+
+// S->C Commands (brigadier tree): root -> give shears, spawn sheep
+int sc_commands (int client_fd) {
+  // Nodes: 0=root, 1=literal("give") -> 2, 2=literal("shears") exec, 3=literal("spawn") -> 4, 4=literal("sheep") exec
+  const int nodes = 5;
+
+  // Precompute payload size
+  int payload = 0;
+  payload += sizeVarInt(nodes);
+  // Node 0: root, children [1,3]
+  payload += 1; // flags
+  payload += sizeVarInt(2) + sizeVarInt(1) + sizeVarInt(3);
+  // Node 1: literal "give", child [2]
+  payload += 1; // flags
+  payload += sizeVarInt(1) + sizeVarInt(2);
+  payload += sizeVarInt(4) + 4; // name length + name
+  // Node 2: literal "shears", exec, no children
+  payload += 1; // flags
+  payload += sizeVarInt(0);
+  payload += sizeVarInt(6) + 6;
+  // Node 3: literal "spawn", child [4]
+  payload += 1; // flags
+  payload += sizeVarInt(1) + sizeVarInt(4);
+  payload += sizeVarInt(5) + 5;
+  // Node 4: literal "sheep", exec, no children
+  payload += 1; // flags
+  payload += sizeVarInt(0);
+  payload += sizeVarInt(5) + 5;
+  // Root index
+  payload += sizeVarInt(0);
+
+  writeVarInt(client_fd, 1 + payload);
+  writeByte(client_fd, 0x10);
+
+  writeVarInt(client_fd, nodes);
+
+  // Node 0: root
+  writeByte(client_fd, 0x00); // flags: type=root
+  writeVarInt(client_fd, 2); // children count
+  writeVarInt(client_fd, 1);
+  writeVarInt(client_fd, 3);
+
+  // Node 1: literal "give"
+  writeByte(client_fd, 0x01); // type=literal
+  writeVarInt(client_fd, 1); // children count
+  writeVarInt(client_fd, 2);
+  writeVarInt(client_fd, 4); // name len
+  send_all(client_fd, "give", 4);
+
+  // Node 2: literal "shears" (exec)
+  writeByte(client_fd, 0x05); // type=literal + executable
+  writeVarInt(client_fd, 0); // no children
+  writeVarInt(client_fd, 6);
+  send_all(client_fd, "shears", 6);
+
+  // Node 3: literal "spawn"
+  writeByte(client_fd, 0x01); // type=literal
+  writeVarInt(client_fd, 1);
+  writeVarInt(client_fd, 4);
+  writeVarInt(client_fd, 5);
+  send_all(client_fd, "spawn", 5);
+
+  // Node 4: literal "sheep" (exec)
+  writeByte(client_fd, 0x05); // type=literal + executable
+  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, 5);
+  send_all(client_fd, "sheep", 5);
+
+  // Root index
+  writeVarInt(client_fd, 0);
+
+  return 0;
+}

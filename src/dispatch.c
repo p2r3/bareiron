@@ -60,6 +60,7 @@ void handlePacket (ServerContext *ctx, int client_fd, int length, int packet_id,
 				printf("Client Acknowledged Configuration\n\n");
 				setClientState(ctx, client_fd, STATE_PLAY);
 				sc_loginPlay(client_fd);
+				sc_commands(client_fd);
 				PlayerData *player;
 				if (getPlayerData(ctx, client_fd, &player)) break;
 				spawnPlayer(ctx, player);
@@ -92,6 +93,7 @@ void handlePacket (ServerContext *ctx, int client_fd, int length, int packet_id,
 				// Move to PLAY immediately and send join/spawn sequence
 				setClientState(ctx, client_fd, STATE_PLAY);
 				sc_loginPlay(client_fd);
+				sc_commands(client_fd);
 				PlayerData *player;
 				if (!getPlayerData(ctx, client_fd, &player)) {
 					spawnPlayer(ctx, player);
