@@ -19,18 +19,9 @@
 #include "tools.h"
 #include "registries.h"
 #include "worldgen.h"
-#include "crafting.h"
 #include "procedures.h"
 #include "packets.h"
-
-static inline uint16_t read_u16_unaligned(const void *p) {
-  uint16_t v;
-  memcpy(&v, p, sizeof(v));
-  return v;
-}
-static inline void write_u16_unaligned(void *p, uint16_t v) {
-  memcpy(p, &v, sizeof(v));
-}
+#include "zig_exports.h"
 
 // S->C Status Response (server list ping)
 int sc_statusResponse (ServerContext *ctx, int client_fd) {
@@ -619,10 +610,10 @@ int cs_clickContainer (ServerContext *ctx, int client_fd) {
       } else
       #endif
       if (slot > 40) {
-        curr_item = read_u16_unaligned(&player->craft_items[slot - 41]);
+        curr_item = player->craft_items[slot - 41];
         curr_count = player->craft_count[slot - 41];
       } else {
-        curr_item = read_u16_unaligned(&player->inventory_items[slot]);
+        curr_item = player->inventory_items[slot];
         curr_count = player->inventory_count[slot];
       }
       sc_setContainerSlot(client_fd, window_id, clicked_slot, curr_count, curr_item);
@@ -686,7 +677,7 @@ int cs_clickContainer (ServerContext *ctx, int client_fd) {
 
   if (!readByte(ctx, client_fd)) { // no item?
       if (slot != 255 && apply_changes) {
-        write_u16_unaligned(p_item, 0);
+        *p_item = 0;
         *p_count = 0;
         #ifdef ALLOW_CHESTS
         if (window_id == 2 && slot > 40) {
@@ -707,7 +698,7 @@ int cs_clickContainer (ServerContext *ctx, int client_fd) {
   recv_all(client_fd, ctx->recv_buffer, tmp, false);
 
     if (count > 0 && apply_changes && slot != 255) {
-      write_u16_unaligned(p_item, item);
+      *p_item = item;
       *p_count = count;
       #ifdef ALLOW_CHESTS
       if (window_id == 2 && slot > 40) {
@@ -720,12 +711,12 @@ int cs_clickContainer (ServerContext *ctx, int client_fd) {
 
   // window 0 is player inventory, window 12 is crafting table
   if (craft && (window_id == 0 || window_id == 12)) {
-    getCraftingOutput(ctx, player, &count, &item);
+    getCraftingOutputC(ctx, player, &count, &item);
     sc_setContainerSlot(client_fd, window_id, 0, count, item);
   } else if (window_id == 14) { // furnace
     getSmeltingOutput(ctx, player);
     for (int i = 0; i < 3; i ++) {
-      sc_setContainerSlot(client_fd, window_id, i, player->craft_count[i], read_u16_unaligned(&player->craft_items[i]));
+      sc_setContainerSlot(client_fd, window_id, i, player->craft_count[i], player->craft_items[i]);
     }
   }
 
@@ -887,7 +878,7 @@ int cs_closeContainer (ServerContext *ctx, int client_fd) {
   // or, in the case of chests, simply clear the storage pointer
   for (uint8_t i = 0; i < 9; i ++) {
     if (window_id != 2) {
-      givePlayerItem(player, read_u16_unaligned(&player->craft_items[i]), player->craft_count[i]);
+      givePlayerItem(player, player->craft_items[i], player->craft_count[i]);
       uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
       if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
     }

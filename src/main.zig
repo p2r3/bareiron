@@ -6,6 +6,9 @@ comptime {
 comptime {
     _ = @import("structures.zig");
 }
+comptime {
+    _ = @import("crafting.zig");
+}
 const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 

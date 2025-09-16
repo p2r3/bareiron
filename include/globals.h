@@ -178,42 +178,35 @@ typedef struct {
 
 #pragma pack(push, 1)
 
+// New, correctly aligned struct in globals.h
 typedef struct {
-  uint8_t uuid[16];
-  char name[16];
+  // Group larger types first
   int client_fd;
   short x;
-  uint8_t y;
   short z;
   short visited_x[VISITED_HISTORY];
   short visited_z[VISITED_HISTORY];
+  uint16_t saturation;
+  uint16_t inventory_items[41];
+  uint16_t craft_items[9];
+  uint16_t flagval_16;
   #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
     uint16_t packets_since_update;
   #endif
+
+  // Group 1-byte types together
+  uint8_t uuid[16];
+  char name[16];
+  uint8_t inventory_count[41];
+  uint8_t craft_count[9];
+  uint8_t y;
   int8_t yaw;
   int8_t pitch;
   uint8_t grounded_y;
   uint8_t health;
   uint8_t hunger;
-  uint16_t saturation;
   uint8_t hotbar;
-  uint16_t inventory_items[41];
-  uint16_t craft_items[9];
-  uint8_t inventory_count[41];
-  uint8_t craft_count[9];
-  // Usage depends on player's flags, see below
-  // When no flags are set, acts as cursor item ID
-  uint16_t flagval_16;
-  // Usage depends on player's flags, see below
-  // When no flags are set, acts as cursor item count
   uint8_t flagval_8;
-  // 0x01 - attack cooldown, uses flagval_8 as the timer
-  // 0x02 - has not spawned yet
-  // 0x04 - sneaking
-  // 0x08 - sprinting
-  // 0x10 - eating, makes flagval_16 act as eating timer
-  // 0x20 - client loading, uses flagval_16 as fallback timer
-  // 0x40 - movement update cooldown
   uint8_t flags;
 } PlayerData;
 

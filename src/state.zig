@@ -43,8 +43,8 @@ pub const ServerState = struct {
         // Zero everything by default
         @memset(std.mem.asBytes(&s.context), 0);
 
-    s.context.world_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_WORLD_SEED)));
-    s.context.rng_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_RNG_SEED)));
+        s.context.world_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_WORLD_SEED)));
+        s.context.rng_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_RNG_SEED)));
         s.context.world_time = 0;
         s.context.server_ticks = 0;
         s.context.client_count = 0;
