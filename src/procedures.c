@@ -405,7 +405,8 @@ void broadcastPlayerMetadata (PlayerData *player) {
   }
 }
 
-// Sends a mob's entity metadata to a specific player, or other players if client_fd is -1
+// Sends a mob's entity metadata to the given player.
+// If client_fd is -1, broadcasts to all player
 void broadcastMobMetadata (int client_fd, int entity_id) {
 
   MobData *mob = &mob_data[-entity_id - 2];
@@ -427,8 +428,8 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
       length = 1;
 
       break;
-    default:
-      return;
+
+    default: return;
   }
 
   if (client_fd == -1) {
