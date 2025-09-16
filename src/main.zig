@@ -263,7 +263,6 @@ fn acceptNewConnection(server_fd: SocketFD) !void {
             _ = c.setsockopt(new_fd, c.SOL_SOCKET, c.SO_NOSIGPIPE, @ptrCast(&one), @sizeOf(c_int));
         }
         client_fds[i] = new_fd;
-        g_state.context.client_count += 1;
         std.log.info("Accepted new client in slot {d} (fd: {d})", .{ i, new_fd });
         c.setClientState(@ptrCast(&g_state.context), @intCast(new_fd), c.STATE_NONE);
     } else {

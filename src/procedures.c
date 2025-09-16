@@ -165,6 +165,8 @@ void handlePlayerDisconnect (ServerContext *ctx, int client_fd) {
     ctx->client_states[i].state = STATE_NONE;
     return;
   }
+
+  ctx->client_count--;
 }
 
 // Marks a client as connected and broadcasts their data to other players
@@ -187,7 +189,7 @@ void handlePlayerJoin (ServerContext *ctx, PlayerData* player) {
   // Clear "client loading" flag and fallback timer
   player->flags &= ~0x20;
   player->flagval_16 = 0;
-
+  ctx->client_count++;
 }
 
 // Legacy disconnectClient removed; Zig owns disconnect lifecycle now.
