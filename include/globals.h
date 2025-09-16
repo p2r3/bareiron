@@ -102,6 +102,9 @@
 // clients from Keep Alive packets.
 #define NETWORK_TIMEOUT_TIME 15000000
 
+// Size of the receive buffer for incoming string data
+#define MAX_RECV_BUF_LEN 256 
+
 // If defined, sends the server brand to clients. Doesn't do much, but will
 // show up in the top-left of the F3/debug menu, in the Minecraft client.
 // You can change the brand string in the "brand" variable in src/globals.c

@@ -220,6 +220,13 @@ double readDouble (int client_fd) {
 // Reads a networked string into recv_buffer
 void readString (int client_fd) {
   uint32_t length = readVarInt(client_fd);
+
+  if (length >= MAX_RECV_BUF_LEN) {
+    printf("ERROR: String length (%u) exceeds maximum (%u)", length, MAX_RECV_BUF_LEN);
+    disconnectClient(&client_fd, -1);
+    recv_count = -1;
+    return;
+  }
   recv_count = recv_all(client_fd, recv_buffer, length, false);
   recv_buffer[recv_count] = '\0';
 }
