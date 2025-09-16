@@ -857,7 +857,11 @@ int cs_setHeldItem (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  player->hotbar = (uint8_t)readUint16(client_fd);
+  {
+    uint16_t slot = readUint16(client_fd);
+    if (slot > 8) slot = 0;
+    player->hotbar = (uint8_t)slot;
+  }
 
   return 0;
 }

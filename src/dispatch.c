@@ -11,7 +11,7 @@
 #include "dispatch.h"
 
 // Handle incoming packets; moved here from old c_main.c
-void handlePacket (int client_fd, int length, int packet_id, int state) {
+void handlePacket (ServerContext *ctx, int client_fd, int length, int packet_id, int state) {
 	uint64_t bytes_received_start = total_bytes_received;
 
 	switch (packet_id) {

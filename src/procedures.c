@@ -873,6 +873,25 @@ uint8_t getItemDefensePoints (uint16_t item) {
   return 0;
 }
 
+// Returns whether the given item is edible in our ruleset
+static inline uint8_t isFoodItem(uint16_t item) {
+  switch (item) {
+    case I_chicken:
+    case I_beef:
+    case I_porkchop:
+    case I_mutton:
+    case I_cooked_chicken:
+    case I_cooked_beef:
+    case I_cooked_porkchop:
+    case I_cooked_mutton:
+    case I_rotten_flesh:
+    case I_apple:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
 // Calculates total defense points for the player's equipped armor
 uint8_t getPlayerDefensePoints (PlayerData *player) {
   return (
@@ -969,11 +988,16 @@ uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
   // Update the client of these changes
   sc_entityEvent(player->client_fd, player->client_fd, 9);
   sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
-  sc_setContainerSlot(
-    player->client_fd, 0,
-    serverSlotToClientSlot(0, player->hotbar),
-    *held_count, *held_item
-  );
+  {
+    uint8_t client_slot = serverSlotToClientSlot(0, player->hotbar);
+    if (client_slot != 255) {
+      sc_setContainerSlot(
+        player->client_fd, 0,
+        client_slot,
+        *held_count, *held_item
+      );
+    }
+  }
 
   return true;
 }
@@ -1259,7 +1283,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
         if ((fast_rand() & 3) == 0) placeTreeStructure(x, y, z);
       }
     }
-  } else if (handlePlayerEating(player, true)) {
+  } else if (player->hunger < 20 && isFoodItem(item_val)) {
     // Reset eating timer and set eating flag
     player->flagval_16 = 0;
     player->flags |= 0x10;
@@ -1328,7 +1352,10 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   }
 
   // Sync hotbar contents to player
-  sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item_val);
+  {
+    uint8_t client_slot = serverSlotToClientSlot(0, player->hotbar);
+    if (client_slot != 255) sc_setContainerSlot(player->client_fd, 0, client_slot, *count, item_val);
+  }
 
 }
 
@@ -1515,7 +1542,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
 
 // Simulates events scheduled for regular intervals
 // Takes the time since the last tick in microseconds as the only arguemnt
-void handleServerTick (int64_t time_since_last_tick) {
+void handleServerTick (ServerContext *ctx, int64_t time_since_last_tick) {
 
   // Update world time
   world_time = (world_time + time_since_last_tick / 50000) % 24000;

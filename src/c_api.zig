@@ -17,6 +17,7 @@ pub const c = @cImport({
     }
 
     @cInclude("globals.h");
+    @cInclude("context.h");
     @cInclude("tools.h");
     @cInclude("varnum.h");
     @cInclude("packets.h");

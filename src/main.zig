@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = @import("c_api.zig").c;
+const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 
 const MAX_PLAYERS = c.MAX_PLAYERS;
@@ -10,6 +11,7 @@ const is_windows = builtin.target.os.tag == .windows;
 const SocketFD = if (is_windows) c.SOCKET else std.posix.fd_t;
 const INVALID_FD: SocketFD = if (is_windows) c.INVALID_SOCKET else @as(std.posix.fd_t, -1);
 var client_fds: [MAX_PLAYERS]SocketFD = undefined;
+var g_state: state_mod.ServerState = undefined;
 
 pub fn main() !void {
     if (is_windows) {
@@ -25,6 +27,8 @@ pub fn main() !void {
     c.rng_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_RNG_SEED)));
     _ = c.initSerializer();
     c.client_count = 0;
+    // Initialize server state context (parallel to legacy globals for now)
+    g_state = state_mod.ServerState.init();
 
     // Initialize globals similar to old C main
     for (0..c.MAX_BLOCK_CHANGES) |i| {
@@ -175,7 +179,7 @@ pub fn main() !void {
 
         const after_wait: i64 = c.get_program_time();
         if ((after_wait - last_tick_time) >= TIME_BETWEEN_TICKS) {
-            c.handleServerTick(after_wait - last_tick_time);
+            c.handleServerTick(@ptrCast(&g_state.context), after_wait - last_tick_time);
             last_tick_time = after_wait;
         }
     }
@@ -232,6 +236,6 @@ fn processClientPacket(fd: SocketFD) void {
     if (length == c.VARNUM_ERROR) return;
     const packet_id = c.readVarInt(@intCast(fd));
     if (packet_id == c.VARNUM_ERROR) return;
-    const state = c.getClientState(@intCast(fd));
-    c.handlePacket(@intCast(fd), length - c.sizeVarInt(@intCast(packet_id)), @intCast(packet_id), state);
+    const st = c.getClientState(@intCast(fd));
+    c.handlePacket(@ptrCast(&g_state.context), @intCast(fd), length - c.sizeVarInt(@intCast(packet_id)), @intCast(packet_id), st);
 }
