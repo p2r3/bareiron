@@ -1,141 +1,45 @@
 const std = @import("std");
 const c = @import("c_api.zig").c;
-const recipes_mod = @import("recipes.zig");
-const Recipe = recipes_mod.Recipe;
+const pre = @import("precomputed_recipes.zig");
 
-/// Checks a shaped recipe against the player's grid at a specific offset.
-/// This function verifies two things:
-/// 1. The items in the grid match the recipe's shape at the given position.
-/// 2. There are no other items on the grid that are not part of the recipe.
-fn checkShapedMatchAt(
-    grid: [9]u16,
-    recipe: Recipe,
-    start_row: u8,
-    start_col: u8,
-) bool {
-    // Create a temporary copy of the grid to mark off items as they are matched.
-    var temp_grid = grid;
-
-    // Iterate through the recipe's shape (defined by its width and height).
-    var r_row: u8 = 0;
-    while (r_row < recipe.height) : (r_row += 1) {
-        var r_col: u8 = 0;
-        while (r_col < recipe.width) : (r_col += 1) {
-            const recipe_idx = r_row * recipe.width + r_col;
-            const grid_idx = (start_row + r_row) * 3 + (start_col + r_col);
-
-            const recipe_item = recipe.shape[recipe_idx];
-            const grid_item = grid[grid_idx];
-
-            // If the recipe specifies an item but the grid slot is different, it's not a match.
-            if (recipe_item != 0 and recipe_item != grid_item) {
-                return false;
-            }
-
-            // If the recipe specifies an empty slot but the grid has an item, it's not a match.
-            if (recipe_item == 0 and grid_item != 0) {
-                return false;
-            }
-
-            // If they match, mark this grid slot as "accounted for" in our temporary grid.
-            if (recipe_item != 0) {
-                temp_grid[grid_idx] = 0;
-            }
-        }
-    }
-
-    // After checking the recipe shape, ensure the rest of the grid is empty.
-    // This prevents recipes from matching if there are extra, unrelated items.
-    for (temp_grid) |item| {
-        if (item != 0) return false;
-    }
-
-    return true;
-}
-
-/// Determines the output of the player's crafting grid.
-/// This function is exported to be called from C code.
 pub export fn getCraftingOutputC(
     _: *c.ServerContext,
     player: *c.PlayerData,
     count: *u8,
     item: *u16,
 ) void {
+    if (pre.shapedLookup(player.craft_items)) |out| {
+        item.* = out.item;
+        count.* = out.count;
+        return;
+    }
+
     var filled: u8 = 0;
     var first_item: u16 = 0;
     var all_identical = true;
-
-    // Analyze the player's crafting grid to get basic info.
     for (player.craft_items) |grid_item| {
         if (grid_item != 0) {
             filled += 1;
-            if (first_item == 0) {
-                first_item = grid_item;
-            } else if (grid_item != first_item) {
-                all_identical = false;
-            }
+            if (first_item == 0) first_item = grid_item else if (grid_item != first_item) all_identical = false;
         }
     }
-
-    // If the grid is empty, there's no output.
     if (filled == 0) {
         item.* = 0;
         count.* = 0;
         return;
     }
-
-    // The 'inline for' loop iterates over all recipes at COMPILE TIME.
-    // The compiler unrolls this loop and generates a series of direct checks,
-    // which is highly efficient.
-    inline for (recipes_mod.recipes) |recipe| {
-        // --- 1. Check Shapeless Recipes ---
-        // These are simple checks based on item count and type.
-        if (recipe.shapeless_count > 0) {
-            if (filled == recipe.shapeless_count and all_identical and first_item == recipe.shape[0]) {
-                item.* = recipe.output_item;
-                count.* = recipe.output_count;
-                return;
-            }
-        }
-        // --- 2. Check Shaped Recipes ---
-        else {
-            // First, do a quick check on the number of ingredients. If it doesn't match
-            // the number of filled slots, we can skip the more expensive shape check.
-            var ingredient_count: u8 = 0;
-            // ================== FIX START ==================
-            for (recipe.shape) |ing| {
-                if (ing != 0) ingredient_count += 1;
-            }
-            // =================== FIX END ===================
-
-            if (filled == ingredient_count) {
-                // Iterate through all possible top-left starting positions for the recipe shape
-                // within the 3x3 grid.
-                const max_start_row = 3 - recipe.height;
-                const max_start_col = 3 - recipe.width;
-                var start_row: u8 = 0;
-                while (start_row <= max_start_row) : (start_row += 1) {
-                    var start_col: u8 = 0;
-                    while (start_col <= max_start_col) : (start_col += 1) {
-                        // Check if the recipe matches at this specific position.
-                        if (checkShapedMatchAt(player.craft_items, recipe, start_row, start_col)) {
-                            item.* = recipe.output_item;
-                            count.* = recipe.output_count;
-                            return;
-                        }
-                    }
-                }
-            }
+    if (all_identical) {
+        if (pre.shapelessLookup(first_item, filled)) |out2| {
+            item.* = out2.item;
+            count.* = out2.count;
+            return;
         }
     }
 
-    // If the loop finishes without finding a match, there is no output.
     item.* = 0;
     count.* = 0;
 }
 
-/// Determines the output of the furnace based on the input and fuel.
-/// This function remains unchanged as it is not related to shaped crafting.
 pub export fn getSmeltingOutput(ctx: *c.ServerContext, player: *c.PlayerData) void {
     const material_count = &player.craft_count[0];
     const fuel_count = &player.craft_count[1];
