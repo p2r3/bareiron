@@ -17,7 +17,6 @@
 
 #include "globals.h"
 #include "tools.h"
-#include "varnum.h"
 #include "registries.h"
 #include "worldgen.h"
 #include "crafting.h"

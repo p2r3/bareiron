@@ -23,7 +23,6 @@ pub fn build(b: *std.Build) void {
             "src/serialize.c",
             "src/structures.c",
             "src/tools.c",
-            "src/varnum.c",
             "src/worldgen.c",
         },
         .flags = &.{},

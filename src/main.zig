@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = @import("c_api.zig").c;
+comptime { _ = @import("varnum.zig"); }
 const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 

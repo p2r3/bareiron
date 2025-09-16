@@ -2,7 +2,6 @@
 #include <string.h>
 #include "globals.h"
 #include "tools.h"
-#include "varnum.h"
 #include "packets.h"
 #include "worldgen.h"
 #include "registries.h"

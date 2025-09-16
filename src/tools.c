@@ -22,7 +22,6 @@
 #endif
 
 #include "globals.h"
-#include "varnum.h"
 #include "procedures.h"
 #include "tools.h"
 

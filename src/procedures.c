@@ -8,7 +8,6 @@
 
 #include "globals.h"
 #include "tools.h"
-#include "varnum.h"
 #include "packets.h"
 #include "registries.h"
 #include "worldgen.h"
