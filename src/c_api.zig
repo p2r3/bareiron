@@ -16,6 +16,13 @@ pub const c = @cImport({
         @cInclude("poll.h");
     }
 
+    // ESP-IDF specific headers (only meaningful when building for ESP targets)
+    if (@import("builtin").target.os.tag == .freestanding) {
+        @cInclude("esp_timer.h");
+        @cInclude("freertos/FreeRTOS.h");
+        @cInclude("freertos/task.h");
+    }
+
     @cInclude("globals.h");
     @cInclude("context.h");
     @cInclude("tools.h");

@@ -13,6 +13,21 @@ const INVALID_FD: SocketFD = if (is_windows) c.INVALID_SOCKET else @as(std.posix
 var client_fds: [MAX_PLAYERS]SocketFD = undefined;
 var g_state: state_mod.ServerState = undefined;
 
+const is_esp = @import("builtin").target.os.tag == .freestanding;
+
+// Yield helper for platforms (ESP). Implemented in Zig to avoid a separate C file.
+var last_yield: i64 = 0;
+fn task_yield() void {
+    if (!is_esp) return;
+    // TASK_YIELD_INTERVAL = 1000 * 1000 (microseconds)
+    const TASK_YIELD_INTERVAL: i64 = 1000 * 1000;
+    const TASK_YIELD_TICKS: c_int = 1;
+    const time_now = c.esp_timer_get_time();
+    if (time_now - last_yield < TASK_YIELD_INTERVAL) return;
+    _ = c.vTaskDelay(TASK_YIELD_TICKS);
+    last_yield = time_now;
+}
+
 pub fn main() !void {
     if (is_windows) {
         var wsa_data: c.WSADATA = undefined;
@@ -213,7 +228,7 @@ fn acceptNewConnection(server_fd: SocketFD) !void {
             _ = c.fcntl(new_fd, c.F_SETFL, flags2 | @as(c_int, c.O_NONBLOCK));
         }
         client_fds[i] = new_fd;
-    g_state.context.client_count += 1;
+        g_state.context.client_count += 1;
         std.log.info("Accepted new client in slot {d} (fd: {d})", .{ i, new_fd });
         c.setClientState(@ptrCast(&g_state.context), @intCast(new_fd), c.STATE_NONE);
     } else {

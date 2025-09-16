@@ -17,7 +17,6 @@ pub fn build(b: *std.Build) void {
         .files = &.{
             "src/dispatch.c",
             "src/crafting.c",
-            "src/globals.c",
             "src/packets.c",
             "src/procedures.c",
             "src/registries.c",
