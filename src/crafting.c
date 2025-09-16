@@ -6,7 +6,17 @@
 #include "tools.h"
 #include "crafting.h"
 
-void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
+static inline uint16_t read_u16_unaligned(const void *p) {
+  uint16_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+static inline void write_u16_unaligned(void *p, uint16_t v) {
+  memcpy(p, &v, sizeof(v));
+}
+
+void getCraftingOutput (ServerContext *ctx, PlayerData *player, uint8_t *count, uint16_t *item) {
 
   uint8_t i, filled = 0, first = 10, identical = true;
   for (i = 0; i < 9; i ++) {
@@ -346,9 +356,9 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
 }
 
 #define registerSmeltingRecipe(a, b) \
-  if (*material == a && (*output_item == b || *output_item == 0)) *output_item = b
+  if (material_val == a && (output_item_val == b || output_item_val == 0)) output_item_val = b
 
-void getSmeltingOutput (PlayerData *player) {
+void getSmeltingOutput (ServerContext *ctx, PlayerData *player) {
 
   uint8_t *material_count = &player->craft_count[0];
   uint8_t *fuel_count = &player->craft_count[1];
@@ -356,15 +366,15 @@ void getSmeltingOutput (PlayerData *player) {
   // Don't process if we're missing material or fuel
   if (*material_count == 0 || *fuel_count == 0) return;
 
-  uint16_t *material = &player->craft_items[0];
-  uint16_t *fuel = &player->craft_items[1];
+  uint16_t material_val = read_u16_unaligned(&player->craft_items[0]);
+  uint16_t fuel_val = read_u16_unaligned(&player->craft_items[1]);
 
   // Don't process if we're missing material or fuel
-  if (*material == 0 || *fuel == 0) return;
+  if (material_val == 0 || fuel_val == 0) return;
 
   // Furnace output is 3rd crafting table slot
   uint8_t *output_count = &player->craft_count[2];
-  uint16_t *output_item = &player->craft_items[2];
+  uint16_t output_item_val = read_u16_unaligned(&player->craft_items[2]);
 
   // Determine fuel efficiency based on the type of item
   // Since we can't represent fractions, some items use a random component
@@ -372,19 +382,19 @@ void getSmeltingOutput (PlayerData *player) {
   // can lead to a fuel_value of 0, which means that the fuel gets consumed
   // without processing any materials.
   uint8_t fuel_value = 0;
-  if (*fuel == I_coal) fuel_value = 8;
-  else if (*fuel == I_charcoal) fuel_value = 8;
-  else if (*fuel == I_coal_block) fuel_value = 80;
-  else if (*fuel == I_oak_planks) fuel_value = 1 + (fast_rand() & 1);
-  else if (*fuel == I_oak_log) fuel_value = 1 + (fast_rand() & 1);
-  else if (*fuel == I_crafting_table) fuel_value = 1 + (fast_rand() & 1);
-  else if (*fuel == I_stick) fuel_value = (fast_rand() & 1);
-  else if (*fuel == I_oak_sapling) fuel_value = (fast_rand() & 1);
-  else if (*fuel == I_wooden_axe) fuel_value = 1;
-  else if (*fuel == I_wooden_pickaxe) fuel_value = 1;
-  else if (*fuel == I_wooden_shovel) fuel_value = 1;
-  else if (*fuel == I_wooden_sword) fuel_value = 1;
-  else if (*fuel == I_wooden_hoe) fuel_value = 1;
+  if (fuel_val == I_coal) fuel_value = 8;
+  else if (fuel_val == I_charcoal) fuel_value = 8;
+  else if (fuel_val == I_coal_block) fuel_value = 80;
+  else if (fuel_val == I_oak_planks) fuel_value = 1 + (fast_rand(ctx) & 1);
+  else if (fuel_val == I_oak_log) fuel_value = 1 + (fast_rand(ctx) & 1);
+  else if (fuel_val == I_crafting_table) fuel_value = 1 + (fast_rand(ctx) & 1);
+  else if (fuel_val == I_stick) fuel_value = (fast_rand(ctx) & 1);
+  else if (fuel_val == I_oak_sapling) fuel_value = (fast_rand(ctx) & 1);
+  else if (fuel_val == I_wooden_axe) fuel_value = 1;
+  else if (fuel_val == I_wooden_pickaxe) fuel_value = 1;
+  else if (fuel_val == I_wooden_shovel) fuel_value = 1;
+  else if (fuel_val == I_wooden_sword) fuel_value = 1;
+  else if (fuel_val == I_wooden_hoe) fuel_value = 1;
   else return;
 
   uint8_t exchange = *material_count > fuel_value ? fuel_value : *material_count;
@@ -403,14 +413,16 @@ void getSmeltingOutput (PlayerData *player) {
 
   *output_count += exchange;
   *material_count -= exchange;
+  // Persist the selected output item id
+  write_u16_unaligned(&player->craft_items[2], output_item_val);
 
   *fuel_count -= 1;
-  if (*fuel_count == 0) *fuel = 0;
+  if (*fuel_count == 0) write_u16_unaligned(&player->craft_items[1], 0);
 
   if (*material_count <= 0) {
     *material_count = 0;
-    *material = 0;
-  } else return getSmeltingOutput(player);
+    write_u16_unaligned(&player->craft_items[0], 0);
+  } else { getSmeltingOutput(ctx, player); return; }
 
   return;
 

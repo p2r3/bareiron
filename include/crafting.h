@@ -3,7 +3,7 @@
 
 #include "globals.h"
 
-void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item);
-void getSmeltingOutput (PlayerData *player);
+void getCraftingOutput (ServerContext *ctx, PlayerData *player, uint8_t *count, uint16_t *item);
+void getSmeltingOutput (ServerContext *ctx, PlayerData *player);
 
 #endif

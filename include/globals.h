@@ -166,24 +166,8 @@
 #define STATE_CONFIGURATION 4
 #define STATE_PLAY 5
 
-extern ssize_t recv_count;
-extern uint8_t recv_buffer[256];
-
-extern uint32_t world_seed;
-extern uint32_t rng_seed;
-
-extern uint16_t world_time;
-extern uint32_t server_ticks;
-
-extern char motd[];
-extern uint8_t motd_len;
-
-#ifdef SEND_BRAND
-  extern char brand[];
-  extern uint8_t brand_len;
-#endif
-
-extern uint16_t client_count;
+// `recv_count` and `recv_buffer` are now part of `ServerContext`.
+// Many legacy globals (seeds, time, client_count, motd/brand) now live in ServerContext.
 
 typedef struct {
   short x;
@@ -261,12 +245,6 @@ typedef struct {
   union EntityDataValue value;
 } EntityData;
 
-extern BlockChange block_changes[MAX_BLOCK_CHANGES];
-extern int block_changes_count;
-
-extern PlayerData player_data[MAX_PLAYERS];
-extern int player_data_count;
-
-extern MobData mob_data[MAX_MOBS];
+// Arrays moved to ServerContext; no global externs.
 
 #endif

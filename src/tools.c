@@ -41,6 +41,10 @@
 // Helps notice misread packets and clean up after errors
 uint64_t total_bytes_received = 0;
 
+int get_errno(void) {
+  return errno;
+}
+
 ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   char *p = buf;
   size_t total = 0;
@@ -67,7 +71,6 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         // handle network timeout
         if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
-          disconnectClient(&client_fd, -1);
           return -1;
         }
         task_yield();
@@ -123,7 +126,6 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
     #endif
       // handle network timeout
       if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
-        disconnectClient(&client_fd, -2);
         return -1;
       }
       task_yield();
@@ -163,72 +165,74 @@ ssize_t writeDouble (int client_fd, double num) {
   return send_all(client_fd, &bits, sizeof(bits));
 }
 
-uint8_t readByte (int client_fd) {
-  recv_count = recv_all(client_fd, recv_buffer, 1, false);
-  return recv_buffer[0];
+uint8_t readByte (ServerContext *ctx, int client_fd) {
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, 1, false);
+  return ctx->recv_buffer[0];
 }
-uint16_t readUint16 (int client_fd) {
-  recv_count = recv_all(client_fd, recv_buffer, 2, false);
-  return ((uint16_t)recv_buffer[0] << 8) | recv_buffer[1];
+uint16_t readUint16 (ServerContext *ctx, int client_fd) {
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, 2, false);
+  return ((uint16_t)ctx->recv_buffer[0] << 8) | ctx->recv_buffer[1];
 }
-int16_t readInt16 (int client_fd) {
-  recv_count = recv_all(client_fd, recv_buffer, 2, false);
-  return ((int16_t)recv_buffer[0] << 8) | (int16_t)recv_buffer[1];
+int16_t readInt16 (ServerContext *ctx, int client_fd) {
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, 2, false);
+  return ((int16_t)ctx->recv_buffer[0] << 8) | (int16_t)ctx->recv_buffer[1];
 }
-uint32_t readUint32 (int client_fd) {
-  recv_count = recv_all(client_fd, recv_buffer, 4, false);
-  return ((uint32_t)recv_buffer[0] << 24) |
-         ((uint32_t)recv_buffer[1] << 16) |
-         ((uint32_t)recv_buffer[2] << 8) |
-         ((uint32_t)recv_buffer[3]);
+uint32_t readUint32 (ServerContext *ctx, int client_fd) {
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, 4, false);
+  return ((uint32_t)ctx->recv_buffer[0] << 24) |
+         ((uint32_t)ctx->recv_buffer[1] << 16) |
+         ((uint32_t)ctx->recv_buffer[2] << 8) |
+         ((uint32_t)ctx->recv_buffer[3]);
 }
-uint64_t readUint64 (int client_fd) {
-  recv_count = recv_all(client_fd, recv_buffer, 8, false);
-  return ((uint64_t)recv_buffer[0] << 56) |
-         ((uint64_t)recv_buffer[1] << 48) |
-         ((uint64_t)recv_buffer[2] << 40) |
-         ((uint64_t)recv_buffer[3] << 32) |
-         ((uint64_t)recv_buffer[4] << 24) |
-         ((uint64_t)recv_buffer[5] << 16) |
-         ((uint64_t)recv_buffer[6] << 8) |
-         ((uint64_t)recv_buffer[7]);
+uint64_t readUint64 (ServerContext *ctx, int client_fd) {
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, 8, false);
+  return ((uint64_t)ctx->recv_buffer[0] << 56) |
+         ((uint64_t)ctx->recv_buffer[1] << 48) |
+         ((uint64_t)ctx->recv_buffer[2] << 40) |
+         ((uint64_t)ctx->recv_buffer[3] << 32) |
+         ((uint64_t)ctx->recv_buffer[4] << 24) |
+         ((uint64_t)ctx->recv_buffer[5] << 16) |
+         ((uint64_t)ctx->recv_buffer[6] << 8) |
+         ((uint64_t)ctx->recv_buffer[7]);
 }
-int64_t readInt64 (int client_fd) {
-  recv_count = recv_all(client_fd, recv_buffer, 8, false);
-  return ((int64_t)recv_buffer[0] << 56) |
-         ((int64_t)recv_buffer[1] << 48) |
-         ((int64_t)recv_buffer[2] << 40) |
-         ((int64_t)recv_buffer[3] << 32) |
-         ((int64_t)recv_buffer[4] << 24) |
-         ((int64_t)recv_buffer[5] << 16) |
-         ((int64_t)recv_buffer[6] << 8) |
-         ((int64_t)recv_buffer[7]);
+int64_t readInt64 (ServerContext *ctx, int client_fd) {
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, 8, false);
+  return (int64_t)(
+         ((uint64_t)ctx->recv_buffer[0] << 56) |
+         ((uint64_t)ctx->recv_buffer[1] << 48) |
+         ((uint64_t)ctx->recv_buffer[2] << 40) |
+         ((uint64_t)ctx->recv_buffer[3] << 32) |
+         ((uint64_t)ctx->recv_buffer[4] << 24) |
+         ((uint64_t)ctx->recv_buffer[5] << 16) |
+         ((uint64_t)ctx->recv_buffer[6] << 8) |
+         ((uint64_t)ctx->recv_buffer[7])
+         );
 }
-float readFloat (int client_fd) {
-  uint32_t bytes = readUint32(client_fd);
+float readFloat (ServerContext *ctx, int client_fd) {
+  uint32_t bytes = readUint32(ctx, client_fd);
   float output;
   memcpy(&output, &bytes, sizeof(output));
   return output;
 }
-double readDouble (int client_fd) {
-  uint64_t bytes = readUint64(client_fd);
+double readDouble (ServerContext *ctx, int client_fd) {
+  uint64_t bytes = readUint64(ctx, client_fd);
   double output;
   memcpy(&output, &bytes, sizeof(output));
   return output;
 }
 
-// Reads a networked string into recv_buffer
-void readString (int client_fd) {
-  uint32_t length = readVarInt(client_fd);
-  recv_count = recv_all(client_fd, recv_buffer, length, false);
-  recv_buffer[recv_count] = '\0';
+// Reads a networked string into ctx->recv_buffer
+void readString (ServerContext *ctx, int client_fd) {
+  uint32_t length = readVarInt(ctx, client_fd);
+  ctx->recv_count = recv_all(client_fd, ctx->recv_buffer, length, false);
+  ctx->recv_buffer[ctx->recv_count] = '\0';
 }
 
-uint32_t fast_rand () {
-  rng_seed ^= rng_seed << 13;
-  rng_seed ^= rng_seed >> 17;
-  rng_seed ^= rng_seed << 5;
-  return rng_seed;
+uint32_t fast_rand (ServerContext *ctx) {
+  ctx->rng_seed ^= ctx->rng_seed << 13;
+  ctx->rng_seed ^= ctx->rng_seed >> 17;
+  ctx->rng_seed ^= ctx->rng_seed << 5;
+  return ctx->rng_seed;
 }
 
 uint64_t splitmix64 (uint64_t state) {

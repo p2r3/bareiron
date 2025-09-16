@@ -2,8 +2,9 @@
 #define H_TOOLS
 
 #include <unistd.h>
+#include <errno.h>
 
-#include "globals.h"
+#include "context.h"
 
 static inline int mod_abs (int a, int b) {
   return ((a % b) + b) % b;
@@ -23,19 +24,22 @@ ssize_t writeUint64 (int client_fd, uint64_t num);
 ssize_t writeFloat (int client_fd, float num);
 ssize_t writeDouble (int client_fd, double num);
 
-uint8_t readByte (int client_fd);
-uint16_t readUint16 (int client_fd);
-int16_t readInt16 (int client_fd);
-uint32_t readUint32 (int client_fd);
-uint64_t readUint64 (int client_fd);
-int64_t readInt64 (int client_fd);
-float readFloat (int client_fd);
-double readDouble (int client_fd);
+uint8_t readByte (ServerContext *ctx, int client_fd);
+uint16_t readUint16 (ServerContext *ctx, int client_fd);
+int16_t readInt16 (ServerContext *ctx, int client_fd);
+uint32_t readUint32 (ServerContext *ctx, int client_fd);
+uint64_t readUint64 (ServerContext *ctx, int client_fd);
+int64_t readInt64 (ServerContext *ctx, int client_fd);
+float readFloat (ServerContext *ctx, int client_fd);
+double readDouble (ServerContext *ctx, int client_fd);
 
-void readString (int client_fd);
+void readString (ServerContext *ctx, int client_fd);
 
-uint32_t fast_rand ();
+uint32_t fast_rand (ServerContext *ctx);
 uint64_t splitmix64 (uint64_t state);
+
+// Return the current errno value
+int get_errno(void);
 
 #ifdef ESP_PLATFORM
   #include "esp_timer.h"

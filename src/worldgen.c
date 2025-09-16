@@ -10,18 +10,19 @@
 #include "procedures.h"
 #include "worldgen.h"
 
-uint32_t getChunkHash (short x, short z) {
+uint32_t getChunkHash (ServerContext *ctx, short x, short z) {
 
   uint8_t buf[8];
   memcpy(buf, &x, 2);
   memcpy(buf + 2, &z, 2);
-  memcpy(buf + 4, &world_seed, 4);
+  // Use ctx->world_seed instead of global
+  memcpy(buf + 4, &ctx->world_seed, 4);
 
   return splitmix64(*((uint64_t *)buf));
 
 }
 
-uint8_t getChunkBiome (short x, short z) {
+uint8_t getChunkBiome (ServerContext *ctx, short x, short z) {
 
   // Center biomes on 0;0
   x += BIOME_RADIUS;
@@ -44,7 +45,8 @@ uint8_t getChunkBiome (short x, short z) {
   // beaches. Using the world seed as a repeating pattern avoids
   // having to generate and layer yet another hash.
   uint8_t index = abs((biome_x & 3) + ((biome_z * 4) & 15));
-  return (world_seed >> (index * 2)) & 3;
+  // Use ctx->world_seed instead of global
+  return (ctx->world_seed >> (index * 2)) & 3;
 
 }
 
@@ -139,7 +141,7 @@ uint8_t getHeightAtFromAnchors (int rx, int rz, ChunkAnchor *anchor_ptr) {
 
 }
 
-uint8_t getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t biome) {
+uint8_t getHeightAtFromHash (ServerContext *ctx, int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t biome) {
 
   if (rx == 0 && rz == 0) {
     int height = getCornerHeight(chunk_hash, biome);
@@ -147,9 +149,9 @@ uint8_t getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash
   }
   return interpolate(
     getCornerHeight(chunk_hash, biome),
-    getCornerHeight(getChunkHash(_x + 1, _z), getChunkBiome(_x + 1, _z)),
-    getCornerHeight(getChunkHash(_x, _z + 1), getChunkBiome(_x, _z + 1)),
-    getCornerHeight(getChunkHash(_x + 1, _z + 1), getChunkBiome(_x + 1, _z + 1)),
+  getCornerHeight(getChunkHash(ctx, _x + 1, _z), getChunkBiome(ctx, _x + 1, _z)),
+  getCornerHeight(getChunkHash(ctx, _x, _z + 1), getChunkBiome(ctx, _x, _z + 1)),
+  getCornerHeight(getChunkHash(ctx, _x + 1, _z + 1), getChunkBiome(ctx, _x + 1, _z + 1)),
     rx, rz
   );
 
@@ -157,16 +159,16 @@ uint8_t getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash
 
 // Get terrain height at the given coordinates
 // Does *not* account for block changes
-uint8_t getHeightAt (int x, int z) {
+uint8_t getHeightAt (ServerContext *ctx, int x, int z) {
 
   int _x = div_floor(x, CHUNK_SIZE);
   int _z = div_floor(z, CHUNK_SIZE);
   int rx = mod_abs(x, CHUNK_SIZE);
   int rz = mod_abs(z, CHUNK_SIZE);
-  uint32_t chunk_hash = getChunkHash(_x, _z);
-  uint8_t biome = getChunkBiome(_x, _z);
+  uint32_t chunk_hash = getChunkHash(ctx, _x, _z);
+  uint8_t biome = getChunkBiome(ctx, _x, _z);
 
-  return getHeightAtFromHash(rx, rz, _x, _z, chunk_hash, biome);
+  return getHeightAtFromHash(ctx, rx, rz, _x, _z, chunk_hash, biome);
 
 }
 
@@ -320,7 +322,7 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
 }
 
-ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
+ChunkFeature getFeatureFromAnchor (ServerContext *ctx, ChunkAnchor anchor) {
 
   ChunkFeature feature;
   uint8_t feature_position = anchor.hash % (CHUNK_SIZE * CHUNK_SIZE);
@@ -345,6 +347,7 @@ ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
     feature.x += anchor.x * CHUNK_SIZE;
     feature.z += anchor.z * CHUNK_SIZE;
     feature.y = getHeightAtFromHash(
+      ctx,
       mod_abs(feature.x, CHUNK_SIZE), mod_abs(feature.z, CHUNK_SIZE),
       anchor.x, anchor.z, anchor.hash, anchor.biome
     ) + 1;
@@ -355,7 +358,7 @@ ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
 
 }
 
-uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
+uint8_t getTerrainAt (ServerContext *ctx, int x, int y, int z, ChunkAnchor anchor) {
 
   if (y > 80) return B_air;
 
@@ -364,18 +367,18 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
   if (rx < 0) rx += CHUNK_SIZE;
   if (rz < 0) rz += CHUNK_SIZE;
 
-  ChunkFeature feature = getFeatureFromAnchor(anchor);
-  uint8_t height = getHeightAtFromHash(rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
+  ChunkFeature feature = getFeatureFromAnchor(ctx, anchor);
+  uint8_t height = getHeightAtFromHash(ctx, rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
 
   return getTerrainAtFromCache(x, y, z, rx, rz, anchor, feature, height);
 
 }
 
-uint8_t getBlockAt (int x, int y, int z) {
+uint8_t getBlockAt (ServerContext *ctx, int x, int y, int z) {
 
   if (y < 0) return B_bedrock;
 
-  uint8_t block_change = getBlockChange(x, y, z);
+  uint8_t block_change = getBlockChange(ctx, x, y, z);
   if (block_change != 0xFF) return block_change;
 
   short anchor_x = div_floor(x, CHUNK_SIZE);
@@ -383,11 +386,11 @@ uint8_t getBlockAt (int x, int y, int z) {
   ChunkAnchor anchor = {
     .x = anchor_x,
     .z = anchor_z,
-    .hash = getChunkHash(anchor_x, anchor_z),
-    .biome = getChunkBiome(anchor_x, anchor_z)
+    .hash = getChunkHash(ctx, anchor_x, anchor_z),
+    .biome = getChunkBiome(ctx, anchor_x, anchor_z)
   };
 
-  return getTerrainAt(x, y, z, anchor);
+  return getTerrainAt(ctx, x, y, z, anchor);
 
 }
 
@@ -398,7 +401,7 @@ uint8_t chunk_section_height[16][16];
 
 // Builds a 16x16x16 chunk of blocks and writes it to `chunk_section`
 // Returns the biome at the origin corner of the chunk
-uint8_t buildChunkSection (int cx, int cy, int cz) {
+uint8_t buildChunkSection (ServerContext *ctx, int cx, int cy, int cz) {
 
   // Precompute hashes, anchors and features for each relevant minichunk
   int anchor_index = 0, feature_index = 0;
@@ -409,12 +412,12 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
 
       anchor->x = j / CHUNK_SIZE;
       anchor->z = i / CHUNK_SIZE;
-      anchor->hash = getChunkHash(anchor->x, anchor->z);
-      anchor->biome = getChunkBiome(anchor->x, anchor->z);
+  anchor->hash = getChunkHash(ctx, anchor->x, anchor->z);
+  anchor->biome = getChunkBiome(ctx, anchor->x, anchor->z);
 
       // Compute chunk features for the minichunks within this section
       if (i != cz + 16 && j != cx + 16) {
-        chunk_features[feature_index] = getFeatureFromAnchor(*anchor);
+  chunk_features[feature_index] = getFeatureFromAnchor(ctx, *anchor);
         feature_index ++;
       }
 
@@ -461,26 +464,26 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
   // This does mean that we're generating some terrain only to replace it,
   // but it's better to apply changes in one run rather than in individual
   // runs per block, as this is more expensive than terrain generation.
-  for (int i = 0; i < block_changes_count; i ++) {
-    if (block_changes[i].block == 0xFF) continue;
+  for (int i = 0; i < ctx->block_changes_count; i ++) {
+    if (ctx->block_changes[i].block == 0xFF) continue;
     // Skip blocks that behave better when sent using a block update
-    if (block_changes[i].block == B_torch) continue;
+  if (ctx->block_changes[i].block == B_torch) continue;
     #ifdef ALLOW_CHESTS
-      if (block_changes[i].block == B_chest) continue;
+  if (ctx->block_changes[i].block == B_chest) continue;
     #endif
     if ( // Check if block is within this chunk section
-      block_changes[i].x >= cx && block_changes[i].x < cx + 16 &&
-      block_changes[i].y >= cy && block_changes[i].y < cy + 16 &&
-      block_changes[i].z >= cz && block_changes[i].z < cz + 16
+      ctx->block_changes[i].x >= cx && ctx->block_changes[i].x < cx + 16 &&
+      ctx->block_changes[i].y >= cy && ctx->block_changes[i].y < cy + 16 &&
+      ctx->block_changes[i].z >= cz && ctx->block_changes[i].z < cz + 16
     ) {
-      int dx = block_changes[i].x - cx;
-      int dy = block_changes[i].y - cy;
-      int dz = block_changes[i].z - cz;
+      int dx = ctx->block_changes[i].x - cx;
+      int dy = ctx->block_changes[i].y - cy;
+      int dz = ctx->block_changes[i].z - cz;
       // Same 8-block sequence reversal as before, this time 10x dirtier
       // because we're working with specific indexes.
       unsigned address = (unsigned)(dx + (dz << 4) + (dy << 8));
       unsigned index = (address & ~7u) | (7u - (address & 7u));
-      chunk_section[index] = block_changes[i].block;
+      chunk_section[index] = ctx->block_changes[i].block;
     }
   }
 

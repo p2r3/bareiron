@@ -28,29 +28,6 @@
   }
 #endif
 
-ssize_t recv_count;
-uint8_t recv_buffer[256] = {0};
+// Legacy global scalars have moved to ServerContext; removed here.
 
-uint32_t world_seed = INITIAL_WORLD_SEED;
-uint32_t rng_seed = INITIAL_RNG_SEED;
-
-uint16_t world_time = 0;
-uint32_t server_ticks = 0;
-
-char motd[] = { "A bareiron server" };
-uint8_t motd_len = sizeof(motd) - 1;
-
-#ifdef SEND_BRAND
-  char brand[] = { "bareiron" };
-  uint8_t brand_len = sizeof(brand) - 1;
-#endif
-
-uint16_t client_count;
-
-BlockChange block_changes[MAX_BLOCK_CHANGES];
-int block_changes_count = 0;
-
-PlayerData player_data[MAX_PLAYERS];
-int player_data_count = 0;
-
-MobData mob_data[MAX_MOBS];
+// All world/player/mob arrays have moved into ServerContext; no globals here.

@@ -23,21 +23,9 @@ pub fn main() !void {
         defer _ = c.WSACleanup();
     }
 
-    c.world_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_WORLD_SEED)));
-    c.rng_seed = @as(u32, @truncate(c.splitmix64(c.INITIAL_RNG_SEED)));
-    _ = c.initSerializer();
-    c.client_count = 0;
-    // Initialize server state context (parallel to legacy globals for now)
+    // Initialize server state context
     g_state = state_mod.ServerState.init();
-
-    // Initialize globals similar to old C main
-    for (0..c.MAX_BLOCK_CHANGES) |i| {
-        c.block_changes[i].block = 0xFF;
-    }
-    for (0..c.MAX_PLAYERS) |i| {
-        c.player_data[i].client_fd = -1;
-        c.client_states[i * 2] = -1;
-    }
+    _ = c.initSerializer(@ptrCast(&g_state.context));
 
     for (&client_fds) |*fd| fd.* = INVALID_FD;
 
@@ -49,7 +37,7 @@ pub fn main() !void {
         if (is_windows) {
             _ = c.closesocket(server_fd);
         } else {
-            std.posix.close(server_fd);
+            _ = c.close(server_fd);
         }
     }
 
@@ -72,8 +60,8 @@ pub fn main() !void {
         var mode: c_ulong = 1;
         _ = c.ioctlsocket(server_fd, c.FIONBIO, &mode);
     } else {
-    const flags: c_int = c.fcntl(server_fd, c.F_GETFL, @as(c_int, 0));
-    _ = c.fcntl(server_fd, c.F_SETFL, flags | @as(c_int, c.O_NONBLOCK));
+        const flags: c_int = c.fcntl(server_fd, c.F_GETFL, @as(c_int, 0));
+        _ = c.fcntl(server_fd, c.F_SETFL, flags | @as(c_int, c.O_NONBLOCK));
     }
     std.log.info("Server listening on port {}", .{PORT});
 
@@ -121,8 +109,17 @@ pub fn main() !void {
                     const peek_res = c.recv(fd, &peek_buf, 1, c.MSG_PEEK);
                     if (peek_res > 0) {
                         processClientPacket(fd);
-                    } else {
+                    } else if (peek_res == 0) {
+                        // orderly shutdown by peer
                         disconnectClient(i);
+                    } else {
+                        // peek_res < 0: check errno for non-blocking 'would block'
+                        const err = c.get_errno();
+                        if (err == c.EAGAIN or err == c.EWOULDBLOCK) {
+                            // no data available yet, continue
+                        } else {
+                            disconnectClient(i);
+                        }
                     }
                 }
             }
@@ -170,8 +167,17 @@ pub fn main() !void {
                     const peek_res = c.recv(fd, &peek_buf, 1, c.MSG_PEEK);
                     if (peek_res > 0) {
                         processClientPacket(fd);
-                    } else {
+                    } else if (peek_res == 0) {
+                        // orderly shutdown by peer
                         disconnectClient(@intCast(slot));
+                    } else {
+                        // peek_res < 0: on non-blocking sockets EAGAIN/EWOULDBLOCK is normal
+                        const err = c.get_errno();
+                        if (err == c.EAGAIN or err == c.EWOULDBLOCK) {
+                            // no data available; do nothing
+                        } else {
+                            disconnectClient(@intCast(slot));
+                        }
                     }
                 }
             }
@@ -188,7 +194,10 @@ pub fn main() !void {
 fn acceptNewConnection(server_fd: SocketFD) !void {
     var free_slot: ?usize = null;
     for (0..MAX_PLAYERS) |i| {
-        if (client_fds[i] == INVALID_FD) { free_slot = i; break; }
+        if (client_fds[i] == INVALID_FD) {
+            free_slot = i;
+            break;
+        }
     }
     var addr: c.sockaddr_in = undefined;
     var addr_len: c.socklen_t = @intCast(@sizeOf(c.sockaddr_in));
@@ -204,14 +213,14 @@ fn acceptNewConnection(server_fd: SocketFD) !void {
             _ = c.fcntl(new_fd, c.F_SETFL, flags2 | @as(c_int, c.O_NONBLOCK));
         }
         client_fds[i] = new_fd;
-        c.client_count += 1;
+    g_state.context.client_count += 1;
         std.log.info("Accepted new client in slot {d} (fd: {d})", .{ i, new_fd });
-    c.setClientState(@intCast(new_fd), c.STATE_NONE);
+        c.setClientState(@ptrCast(&g_state.context), @intCast(new_fd), c.STATE_NONE);
     } else {
         if (is_windows) {
             _ = c.closesocket(new_fd);
         } else {
-            std.posix.close(new_fd);
+            _ = c.close(new_fd);
         }
     }
 }
@@ -220,22 +229,22 @@ fn disconnectClient(slot: usize) void {
     const fd = client_fds[slot];
     if (fd == INVALID_FD) return;
     std.log.info("Client in slot {d} (fd: {d}) disconnected.", .{ slot, fd });
-    c.setClientState(@intCast(fd), c.STATE_NONE);
-    c.handlePlayerDisconnect(@intCast(fd));
+    c.setClientState(@ptrCast(&g_state.context), @intCast(fd), c.STATE_NONE);
+    c.handlePlayerDisconnect(@ptrCast(&g_state.context), @intCast(fd));
     if (is_windows) {
         _ = c.closesocket(fd);
     } else {
-        std.posix.close(fd);
+        _ = c.close(fd);
     }
     client_fds[slot] = INVALID_FD;
-    if (c.client_count > 0) c.client_count -= 1;
+    if (g_state.context.client_count > 0) g_state.context.client_count -= 1;
 }
 
 fn processClientPacket(fd: SocketFD) void {
-    const length = c.readVarInt(@intCast(fd));
+    const length = c.readVarInt(@ptrCast(&g_state.context), @intCast(fd));
     if (length == c.VARNUM_ERROR) return;
-    const packet_id = c.readVarInt(@intCast(fd));
+    const packet_id = c.readVarInt(@ptrCast(&g_state.context), @intCast(fd));
     if (packet_id == c.VARNUM_ERROR) return;
-    const st = c.getClientState(@intCast(fd));
+    const st = c.getClientState(@ptrCast(&g_state.context), @intCast(fd));
     c.handlePacket(@ptrCast(&g_state.context), @intCast(fd), length - c.sizeVarInt(@intCast(packet_id)), @intCast(packet_id), st);
 }

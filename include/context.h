@@ -1,10 +1,15 @@
 #ifndef H_CONTEXT
 #define H_CONTEXT
-
 #include "globals.h"
 
 // Central server context replacing scattered globals.
 // This definition must stay in sync with Zig's extern ServerContext.
+
+typedef struct {
+  int fd;
+  int state;
+} ClientState;
+
 typedef struct ServerContext {
   // Seeds and timing
   uint32_t world_seed;
@@ -14,6 +19,13 @@ typedef struct ServerContext {
 
   // Connections
   uint16_t client_count;
+  
+  // Mapping from client fd -> state
+  ClientState client_states[MAX_PLAYERS];
+
+  // Network receive buffer and last recv count
+  ssize_t recv_count;
+  uint8_t recv_buffer[256];
 
   // World state
   BlockChange block_changes[MAX_BLOCK_CHANGES];
@@ -34,5 +46,4 @@ typedef struct ServerContext {
     char brand[32];
   #endif
 } ServerContext;
-
 #endif

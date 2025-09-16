@@ -11,16 +11,16 @@
 #include "globals.h"
 #include "tools.h"
 
-int32_t readVarInt (int client_fd) {
-  int32_t value = 0;
+int32_t readVarInt (ServerContext *ctx, int client_fd) {
+  uint32_t value = 0;
   int position = 0;
   uint8_t byte;
 
   while (true) {
-    byte = readByte(client_fd);
-    if (recv_count != 1) return VARNUM_ERROR;
+    byte = readByte(ctx, client_fd);
+    if (ctx->recv_count != 1) return VARNUM_ERROR;
 
-    value |= (byte & SEGMENT_BITS) << position;
+    value |= (uint32_t)(byte & SEGMENT_BITS) << position;
 
     if ((byte & CONTINUE_BIT) == 0) break;
 
@@ -28,7 +28,7 @@ int32_t readVarInt (int client_fd) {
     if (position >= 32) return VARNUM_ERROR;
   }
 
-  return value;
+  return (int32_t)value;
 }
 
 int sizeVarInt (uint32_t value) {
