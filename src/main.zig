@@ -31,6 +31,10 @@ const INVALID_FD: SocketFD = if (is_windows) c.INVALID_SOCKET else @as(std.posix
 var client_fds: [MAX_PLAYERS]SocketFD = undefined;
 var g_state: state_mod.ServerState = undefined;
 
+// Winsock's FIONBIO (_IOW) expands to 0x8004667E as an unsigned value.
+// ioctlsocket expects a signed long; use bitcast to preserve bits.
+const FIONBIO: c_long = if (is_windows) @bitCast(@as(c_uint, 0x8004667E)) else 0;
+
 const is_esp = @import("builtin").target.os.tag == .freestanding;
 
 // Yield helper for platforms (ESP). Implemented in Zig to avoid a separate C file.
@@ -80,7 +84,12 @@ pub fn main() !void {
     var addr: c.sockaddr_in = std.mem.zeroes(c.sockaddr_in);
     addr.sin_family = c.AF_INET;
     addr.sin_port = c.htons(PORT);
-    addr.sin_addr.s_addr = c.htonl(c.INADDR_ANY);
+    if (is_windows) {
+        // Windows IN_ADDR layout differs from POSIX
+        addr.sin_addr.S_un.S_addr = c.htonl(c.INADDR_ANY);
+    } else {
+        addr.sin_addr.s_addr = c.htonl(c.INADDR_ANY);
+    }
     if (c.bind(server_fd, @ptrCast(&addr), @intCast(@sizeOf(c.sockaddr_in))) < 0) {
         std.log.err("bind() failed", .{});
         return error.BindFailed;
@@ -91,7 +100,7 @@ pub fn main() !void {
     }
     if (is_windows) {
         var mode: c_ulong = 1;
-        _ = c.ioctlsocket(server_fd, c.FIONBIO, &mode);
+        _ = c.ioctlsocket(server_fd, FIONBIO, &mode);
     } else {
         const flags: c_int = c.fcntl(server_fd, c.F_GETFL, @as(c_int, 0));
         _ = c.fcntl(server_fd, c.F_SETFL, flags | @as(c_int, c.O_NONBLOCK));
@@ -107,51 +116,51 @@ pub fn main() !void {
         if (time_to_next_tick < 0) time_to_next_tick = 0;
 
         if (is_windows) {
-            var read_fds: c.fd_set = undefined;
-            c.FD_ZERO(&read_fds);
-            c.FD_SET(server_fd, &read_fds);
+            var pfds: [MAX_PLAYERS + 1]c.WSAPOLLFD = undefined;
+            var idxmap: [MAX_PLAYERS + 1]isize = undefined;
+            var count: usize = 0;
+            pfds[count] = .{ .fd = server_fd, .events = c.POLLRDNORM, .revents = 0 };
+            idxmap[count] = -1; // server marker
+            count += 1;
 
-            var max_fd: SocketFD = server_fd;
-            for (client_fds) |fd| {
-                if (fd != INVALID_FD) {
-                    c.FD_SET(fd, &read_fds);
-                    if (fd > max_fd) max_fd = fd;
-                }
+            for (0..MAX_PLAYERS) |i| {
+                const fd = client_fds[i];
+                if (fd == INVALID_FD) continue;
+                pfds[count] = .{ .fd = fd, .events = c.POLLRDNORM, .revents = 0 };
+                idxmap[count] = @intCast(i);
+                count += 1;
             }
 
-            var timeout: c.timeval = .{
-                .tv_sec = @intCast(time_to_next_tick / 1_000_000),
-                .tv_usec = @intCast(time_to_next_tick % 1_000_000),
-            };
-
-            const activity = c.select(@intCast(max_fd + 1), &read_fds, null, null, &timeout);
-            if (activity < 0) {
-                std.log.warn("select() returned an error, continuing.", .{});
+            const timeout_ms: c_int = @intCast(@divTrunc(time_to_next_tick, 1000));
+            const rc = c.WSAPoll(&pfds[0], @intCast(count), timeout_ms);
+            if (rc < 0) {
+                std.log.warn("WSAPoll() returned an error, continuing.", .{});
             }
 
-            if (c.FD_ISSET(server_fd, &read_fds)) {
+            if (pfds[0].revents & c.POLLRDNORM != 0) {
                 acceptNewConnection(server_fd) catch |err| {
                     std.log.warn("Failed to accept new connection: {s}", .{@errorName(err)});
                 };
             }
 
-            for (0..MAX_PLAYERS) |i| {
-                const fd = client_fds[i];
-                if (fd != INVALID_FD and c.FD_ISSET(fd, &read_fds)) {
+            var i: usize = 1;
+            while (i < count) : (i += 1) {
+                const ev = pfds[i].revents;
+                if (ev == 0) continue;
+                const slot = idxmap[i];
+                if (slot < 0) continue;
+                const fd = client_fds[@intCast(slot)];
+                if (ev & c.POLLRDNORM != 0) {
                     var peek_buf: [1]u8 = undefined;
                     const peek_res = c.recv(fd, &peek_buf, 1, c.MSG_PEEK);
                     if (peek_res > 0) {
                         processClientPacket(fd);
                     } else if (peek_res == 0) {
-                        // orderly shutdown by peer
-                        disconnectClient(i);
+                        disconnectClient(@intCast(slot));
                     } else {
-                        // peek_res < 0: check errno for non-blocking 'would block'
                         const err = c.get_errno();
-                        if (err == c.EAGAIN or err == c.EWOULDBLOCK) {
-                            // no data available yet, continue
-                        } else {
-                            disconnectClient(i);
+                        if (err != c.EAGAIN and err != c.EWOULDBLOCK) {
+                            disconnectClient(@intCast(slot));
                         }
                     }
                 }
@@ -240,7 +249,7 @@ fn acceptNewConnection(server_fd: SocketFD) !void {
     if (free_slot) |i| {
         if (is_windows) {
             var mode: c_ulong = 1;
-            _ = c.ioctlsocket(new_fd, c.FIONBIO, &mode);
+            _ = c.ioctlsocket(new_fd, FIONBIO, &mode);
         } else {
             const flags2: c_int = c.fcntl(new_fd, c.F_GETFL, @as(c_int, 0));
             _ = c.fcntl(new_fd, c.F_SETFL, flags2 | @as(c_int, c.O_NONBLOCK));

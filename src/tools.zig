@@ -68,7 +68,7 @@ pub export fn recv_all(client_fd: c_int, buf: ?*anyopaque, n: usize, require_fir
     var last_update_time = get_program_time();
 
     if (require_first != 0) {
-        const r = c.recv(client_fd, p, 1, c.MSG_PEEK);
+        const r = if (comptime is_windows) c.recv(@as(c.SOCKET, @intCast(client_fd)), p, 1, c.MSG_PEEK) else c.recv(client_fd, p, 1, c.MSG_PEEK);
         if (r <= 0) {
             if (r < 0 and (get_errno() == c.EAGAIN or get_errno() == c.EWOULDBLOCK)) {
                 return 0;
@@ -78,7 +78,10 @@ pub export fn recv_all(client_fd: c_int, buf: ?*anyopaque, n: usize, require_fir
     }
 
     while (total < n) {
-        const r = c.recv(client_fd, p + total, n - total, 0);
+        const r = if (comptime is_windows)
+            c.recv(@as(c.SOCKET, @intCast(client_fd)), p + total, @as(c_int, @intCast(n - total)), 0)
+        else
+            c.recv(client_fd, p + total, n - total, 0);
         if (r < 0) {
             if (get_errno() == c.EAGAIN or get_errno() == c.EWOULDBLOCK) {
                 if (get_program_time() - last_update_time > c.NETWORK_TIMEOUT_TIME) {
@@ -110,7 +113,15 @@ pub export fn send_all(client_fd: c_int, buf: ?*const anyopaque, len: isize) isi
     const flags: c_int = if (is_windows) 0 else c.MSG_NOSIGNAL;
 
     while (sent < len) {
-        const n = c.send(client_fd, p + @as(usize, @intCast(sent)), @as(usize, @intCast(len - sent)), flags);
+        const n = if (comptime is_windows)
+            c.send(
+                @as(c.SOCKET, @intCast(client_fd)),
+                p + @as(usize, @intCast(sent)),
+                @as(c_int, @intCast(len - sent)),
+                flags,
+            )
+        else
+            c.send(client_fd, p + @as(usize, @intCast(sent)), @as(usize, @intCast(len - sent)), flags);
         if (n > 0) {
             sent += n;
             last_update_time = get_program_time();
