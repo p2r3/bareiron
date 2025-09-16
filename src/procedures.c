@@ -1356,41 +1356,45 @@ void interactEntity (int entity_id, int interactor_id) {
 
   MobData *mob = &mob_data[-entity_id - 2];
 
-  if (mob->type == 106) { // Sheep
-    if (player->inventory_items[player->hotbar] == I_shears) {
-      uint8_t sheared = (mob->data >> 5) & 1;
-      if (!sheared) {
-        mob->data |= 1 << 5; // Set sheared to true
+  switch (mob->type) {
+    case 106:
+      if (player->inventory_items[player->hotbar] != I_shears)
+        return;
 
-        bumpToolDurability(player);
+      if ((mob->data >> 5) & 1) // Check if sheep has already been sheared
+        return;
 
-        #ifdef ENABLE_PICKUP_ANIMATION
-        playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
-        #endif
+      mob->data |= 1 << 5; // Set sheared to true
 
-        uint8_t item_count = 1 + fast_rand() % 2; // 1-2
-        givePlayerItem(player, I_white_wool, item_count);
+      bumpToolDurability(player);
 
-        EntityData metadata[] = {
-          {
-            17,   // Index (Sheep Bit Mask),
-            0,    // Type (Byte),
-            0x10, // Value
-          }
-        };
+      #ifdef ENABLE_PICKUP_ANIMATION
+      playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
+      #endif
 
-        for (int i = 0; i < MAX_PLAYERS; i ++) {
-          PlayerData* player = &player_data[i];
-          int client_fd = player->client_fd;
+      uint8_t item_count = 1 + fast_rand() % 2; // 1-2
+      givePlayerItem(player, I_white_wool, item_count);
 
-          if (client_fd == -1) continue;
-          if (player->flags & 0x20) continue;
-
-          sc_entityAnimation(client_fd, interactor_id, 0);
-          sc_setEntityMetadata(client_fd, entity_id, metadata, 1);
+      EntityData metadata[] = {
+        {
+          17,   // Index (Sheep Bit Mask),
+          0,    // Type (Byte),
+          0x10, // Value
         }
+      };
+
+      for (int i = 0; i < MAX_PLAYERS; i ++) {
+        PlayerData* player = &player_data[i];
+        int client_fd = player->client_fd;
+
+        if (client_fd == -1) continue;
+        if (player->flags & 0x20) continue;
+
+        sc_entityAnimation(client_fd, interactor_id, 0);
+        sc_setEntityMetadata(client_fd, entity_id, metadata, 1);
       }
-    }
+
+      break;
   }
 }
 
