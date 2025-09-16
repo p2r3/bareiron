@@ -21,6 +21,7 @@ int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count);
 void spawnPlayer (PlayerData *player);
 
 void broadcastPlayerMetadata (PlayerData *player);
+void broadcastMobMetadata (int client_fd, int entity_id);
 
 uint8_t serverSlotToClientSlot (int window_id, uint8_t slot);
 uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);
@@ -44,6 +45,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
 void checkFluidUpdate (short x, uint8_t y, short z, uint8_t block);
 
 void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health);
+void interactEntity (int entity_id, int interactor_id);
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage);
 void handleServerTick (int64_t time_since_last_tick);
 

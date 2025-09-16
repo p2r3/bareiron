@@ -373,18 +373,18 @@ void broadcastPlayerMetadata (PlayerData *player) {
   uint8_t sneaking = (player->flags & 0x04) != 0;
   uint8_t sprinting = (player->flags & 0x08) != 0;
 
-  uint8_t player_bit_mask = 0;
-  if (sneaking) player_bit_mask |= 0x02;
-  if (sprinting) player_bit_mask |= 0x08;
+  uint8_t entity_bit_mask = 0;
+  if (sneaking) entity_bit_mask |= 0x02;
+  if (sprinting) entity_bit_mask |= 0x08;
 
   int pose = 0;
   if (sneaking) pose = 5;
 
   EntityData metadata[] = {
     {
-      0,               // Index (Bit Mask)
+      0,               // Index (Entity Bit Mask)
       0,               // Type (Byte)
-      player_bit_mask, // Value
+      entity_bit_mask, // Value
     },
     {
       6,    // Index (Pose),
@@ -403,6 +403,50 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
     sc_setEntityMetadata(client_fd, player->client_fd, metadata, 2);
   }
+}
+
+// Sends a mob's entity metadata to the given player.
+// If client_fd is -1, broadcasts to all player
+void broadcastMobMetadata (int client_fd, int entity_id) {
+
+  MobData *mob = &mob_data[-entity_id - 2];
+
+  EntityData *metadata;
+  size_t length;
+
+  switch (mob->type) {
+    case 106: // Sheep
+      if (!((mob->data >> 5) & 1)) // Don't send metadata if sheep isn't sheared
+        return;
+
+      metadata = malloc(sizeof *metadata);
+      metadata[0] = (EntityData){
+        17,            // Index (Sheep Bit Mask),
+        0,             // Type (Byte),
+        (uint8_t)0x10, // Value
+      };
+      length = 1;
+
+      break;
+
+    default: return;
+  }
+
+  if (client_fd == -1) {
+    for (int i = 0; i < MAX_PLAYERS; i ++) {
+      PlayerData* player = &player_data[i];
+      client_fd = player->client_fd;
+
+      if (client_fd == -1) continue;
+      if (player->flags & 0x20) continue;
+
+      sc_setEntityMetadata(client_fd, entity_id, metadata, length);
+    }
+  } else {
+    sc_setEntityMetadata(client_fd, entity_id, metadata, length);
+  }
+
+  free(metadata);
 }
 
 uint8_t getBlockChange (short x, uint8_t y, short z) {
@@ -1344,9 +1388,55 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
       );
     }
 
+    // Freshly spawned mobs currently don't need metadata updates.
+    // If this changes, uncomment this line.
+    // broadcastMobMetadata(-1, i);
+
     break;
   }
 
+}
+
+void interactEntity (int entity_id, int interactor_id) {
+
+  PlayerData *player;
+  if (getPlayerData(interactor_id, &player)) return;
+
+  MobData *mob = &mob_data[-entity_id - 2];
+
+  switch (mob->type) {
+    case 106: // Sheep
+      if (player->inventory_items[player->hotbar] != I_shears)
+        return;
+
+      if ((mob->data >> 5) & 1) // Check if sheep has already been sheared
+        return;
+
+      mob->data |= 1 << 5; // Set sheared to true
+
+      bumpToolDurability(player);
+
+      #ifdef ENABLE_PICKUP_ANIMATION
+      playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
+      #endif
+
+      uint8_t item_count = 1 + (fast_rand() & 1); // 1-2
+      givePlayerItem(player, I_white_wool, item_count);
+
+      for (int i = 0; i < MAX_PLAYERS; i ++) {
+        PlayerData* player = &player_data[i];
+        int client_fd = player->client_fd;
+
+        if (client_fd == -1) continue;
+        if (player->flags & 0x20) continue;
+
+        sc_entityAnimation(client_fd, interactor_id, 0);
+      }
+
+      broadcastMobMetadata(-1, entity_id);
+
+      break;
+  }
 }
 
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage) {

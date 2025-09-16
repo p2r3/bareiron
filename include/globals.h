@@ -241,7 +241,7 @@ typedef struct {
   uint8_t y;
   short z;
   // Lower 5 bits: health
-  // Middle 1 bit: reserved for future use
+  // Middle 1 bit: sheep sheared, unused for other mobs
   // Upper 2 bits: panic timer
   uint8_t data;
 } MobData;
