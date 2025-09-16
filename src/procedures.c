@@ -373,18 +373,18 @@ void broadcastPlayerMetadata (PlayerData *player) {
   uint8_t sneaking = (player->flags & 0x04) != 0;
   uint8_t sprinting = (player->flags & 0x08) != 0;
 
-  uint8_t player_bit_mask = 0;
-  if (sneaking) player_bit_mask |= 0x02;
-  if (sprinting) player_bit_mask |= 0x08;
+  uint8_t entity_bit_mask = 0;
+  if (sneaking) entity_bit_mask |= 0x02;
+  if (sprinting) entity_bit_mask |= 0x08;
 
   int pose = 0;
   if (sneaking) pose = 5;
 
   EntityData metadata[] = {
     {
-      0,               // Index (Player Bit Mask)
+      0,               // Index (Entity Bit Mask)
       0,               // Type (Byte)
-      player_bit_mask, // Value
+      entity_bit_mask, // Value
     },
     {
       6,    // Index (Pose),
@@ -402,6 +402,48 @@ void broadcastPlayerMetadata (PlayerData *player) {
     if (other_player->flags & 0x20) continue;
 
     sc_setEntityMetadata(client_fd, player->client_fd, metadata, 2);
+  }
+}
+
+// Sends a mob's entity metadata to a specific player, or other players if client_fd is -1
+void broadcastMobMetadata (int client_fd, int entity_id) {
+
+  MobData *mob = &mob_data[-entity_id - 2];
+
+  EntityData *metadata;
+  size_t length;
+
+  switch (mob->type) {
+    case 106: // Sheep
+      if (!((mob->data >> 5) & 1)) // Don't send metadata if sheep isn't sheared
+        return;
+
+      metadata = (EntityData[]){
+        {
+          17,            // Index (Sheep Bit Mask),
+          0,             // Type (Byte),
+          (uint8_t)0x10, // Value
+        }
+      };
+      length = 1;
+
+      break;
+    default:
+      return;
+  }
+
+  if (client_fd == -1) {
+    for (int i = 0; i < MAX_PLAYERS; i ++) {
+      PlayerData* player = &player_data[i];
+      client_fd = player->client_fd;
+
+      if (client_fd == -1) continue;
+      if (player->flags & 0x20) continue;
+
+      sc_setEntityMetadata(client_fd, entity_id, metadata, length);
+    }
+  } else {
+    sc_setEntityMetadata(client_fd, entity_id, metadata, length);
   }
 }
 
@@ -1344,6 +1386,8 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
       );
     }
 
+    broadcastMobMetadata(-1, i);
+
     break;
   }
 
@@ -1357,7 +1401,7 @@ void interactEntity (int entity_id, int interactor_id) {
   MobData *mob = &mob_data[-entity_id - 2];
 
   switch (mob->type) {
-    case 106:
+    case 106: // Sheep
       if (player->inventory_items[player->hotbar] != I_shears)
         return;
 
@@ -1375,14 +1419,6 @@ void interactEntity (int entity_id, int interactor_id) {
       uint8_t item_count = 1 + fast_rand() % 2; // 1-2
       givePlayerItem(player, I_white_wool, item_count);
 
-      EntityData metadata[] = {
-        {
-          17,   // Index (Sheep Bit Mask),
-          0,    // Type (Byte),
-          0x10, // Value
-        }
-      };
-
       for (int i = 0; i < MAX_PLAYERS; i ++) {
         PlayerData* player = &player_data[i];
         int client_fd = player->client_fd;
@@ -1391,8 +1427,9 @@ void interactEntity (int entity_id, int interactor_id) {
         if (player->flags & 0x20) continue;
 
         sc_entityAnimation(client_fd, interactor_id, 0);
-        sc_setEntityMetadata(client_fd, entity_id, metadata, 1);
       }
+
+      broadcastMobMetadata(-1, entity_id);
 
       break;
   }
