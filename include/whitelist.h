@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-int GetPlrs ());
+int GetPlrs ();
 int AddPlayer (char Name[]);
 
 #endif
