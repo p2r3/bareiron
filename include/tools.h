@@ -37,6 +37,8 @@ void readString (int client_fd);
 uint32_t fast_rand ();
 uint64_t splitmix64 (uint64_t state);
 
+int getPlayerByName (char *name);
+
 #ifdef ESP_PLATFORM
   #include "esp_timer.h"
   #define get_program_time esp_timer_get_time

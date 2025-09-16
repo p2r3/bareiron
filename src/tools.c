@@ -238,6 +238,15 @@ uint64_t splitmix64 (uint64_t state) {
   return z ^ (z >> 31);
 }
 
+// Returns the index of the player with the given name, or -1 if not found
+int getPlayerByName (char *name) {
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    if (strcmp(player_data[i].name, name) == 0) return i;
+  }
+  return -1;
+}
+
 #ifndef ESP_PLATFORM
 // Returns system time in microseconds.
 // On ESP-IDF, this is available in "esp_timer.h", and returns time *since
