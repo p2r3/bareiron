@@ -12,6 +12,9 @@ comptime {
 comptime {
     _ = @import("serialize.zig");
 }
+comptime {
+    _ = @import("tools.zig");
+}
 const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 
