@@ -23,14 +23,14 @@ fn task_yield() void {
 }
 
 extern "c" fn __errno_location() *c_int; // glibc/Linux
+extern "c" fn __error() *c_int; // macOS/BSD
 extern "c" fn _errno() *c_int; // Windows/MSVCRT
 
 fn errnoPtr() *c_int {
-    if (is_windows) {
-        return _errno();
-    } else {
-        return __errno_location();
-    }
+    if (is_windows) return _errno();
+    const os = builtin.target.os.tag;
+    if (os == .macos) return __error();
+    return __errno_location();
 }
 
 inline fn set_errno(val: c_int) void {
@@ -110,7 +110,8 @@ pub export fn send_all(client_fd: c_int, buf: ?*const anyopaque, len: isize) isi
     const p: [*]const u8 = @ptrCast(buf.?);
     var sent: isize = 0;
     var last_update_time = get_program_time();
-    const flags: c_int = if (is_windows) 0 else c.MSG_NOSIGNAL;
+    // Use MSG_NOSIGNAL on Linux to suppress SIGPIPE; macOS lacks it.
+    const flags: c_int = if (builtin.target.os.tag == .linux) c.MSG_NOSIGNAL else 0;
 
     while (sent < len) {
         const n = if (comptime is_windows)

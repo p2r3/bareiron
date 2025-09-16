@@ -80,15 +80,19 @@ pub fn main() !void {
 
     var opt: c_int = 1;
     _ = c.setsockopt(server_fd, c.SOL_SOCKET, c.SO_REUSEADDR, @ptrCast(&opt), @sizeOf(c_int));
+    if (@import("builtin").target.os.tag == .macos) {
+        // Prevent SIGPIPE on send
+        _ = c.setsockopt(server_fd, c.SOL_SOCKET, c.SO_NOSIGPIPE, @ptrCast(&opt), @sizeOf(c_int));
+    }
 
     var addr: c.sockaddr_in = std.mem.zeroes(c.sockaddr_in);
     addr.sin_family = c.AF_INET;
-    addr.sin_port = c.htons(PORT);
+    addr.sin_port = std.mem.nativeToBig(u16, PORT);
     if (is_windows) {
         // Windows IN_ADDR layout differs from POSIX
-        addr.sin_addr.S_un.S_addr = c.htonl(c.INADDR_ANY);
+        addr.sin_addr.S_un.S_addr = std.mem.nativeToBig(u32, c.INADDR_ANY);
     } else {
-        addr.sin_addr.s_addr = c.htonl(c.INADDR_ANY);
+        addr.sin_addr.s_addr = std.mem.nativeToBig(u32, c.INADDR_ANY);
     }
     if (c.bind(server_fd, @ptrCast(&addr), @intCast(@sizeOf(c.sockaddr_in))) < 0) {
         std.log.err("bind() failed", .{});
@@ -253,6 +257,10 @@ fn acceptNewConnection(server_fd: SocketFD) !void {
         } else {
             const flags2: c_int = c.fcntl(new_fd, c.F_GETFL, @as(c_int, 0));
             _ = c.fcntl(new_fd, c.F_SETFL, flags2 | @as(c_int, c.O_NONBLOCK));
+        }
+        if (@import("builtin").target.os.tag == .macos) {
+            var one: c_int = 1;
+            _ = c.setsockopt(new_fd, c.SOL_SOCKET, c.SO_NOSIGPIPE, @ptrCast(&one), @sizeOf(c_int));
         }
         client_fds[i] = new_fd;
         g_state.context.client_count += 1;
