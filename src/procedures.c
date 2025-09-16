@@ -1419,7 +1419,7 @@ void interactEntity (int entity_id, int interactor_id) {
       playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
       #endif
 
-      uint8_t item_count = 1 + fast_rand() % 2; // 1-2
+      uint8_t item_count = 1 + (fast_rand() & 1); // 1-2
       givePlayerItem(player, I_white_wool, item_count);
 
       for (int i = 0; i < MAX_PLAYERS; i ++) {
