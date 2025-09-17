@@ -3,17 +3,6 @@ const c = @import("c_api.zig").c;
 
 pub export var chunk_section: [4096]u8 = [_]u8{0} ** 4096;
 
-fn mod_abs(a: c_int, b: c_int) c_int {
-    var r = @rem(a, b);
-    if (r < 0) r += b;
-    return r;
-}
-
-fn div_floor(a: c_int, b: c_int) c_int {
-    const r = @rem(a, b);
-    return if (r < 0) @divTrunc(a - b, b) else @divTrunc(a, b);
-}
-
 fn interpolate(h00: u8, h10: u8, h01: u8, h11: u8, x: c_int, z: c_int) u8 {
     const cs: c_int = c.CHUNK_SIZE;
     const top: u16 = @as(u16, h00) * @as(u16, @intCast(cs - x)) + @as(u16, h10) * @as(u16, @intCast(x));
@@ -59,7 +48,7 @@ fn getCornerHeight(hash: u32, biome: u8) u8 {
 fn getHeightAtFromAnchors(rx: c_int, rz: c_int, anchor_ptr: [*]const c.ChunkAnchor) u8 {
     if (rx == 0 and rz == 0) {
         const height = getCornerHeight(anchor_ptr[0].hash, anchor_ptr[0].biome);
-        if (height > 67) return height - 1;
+        if (height > 67) return height -% 1;
     }
     const step: usize = @intCast(16 / c.CHUNK_SIZE);
     return interpolate(
@@ -90,18 +79,18 @@ fn getFeatureFromAnchor(ctx: *c.ServerContext, anchor: c.ChunkAnchor) c.ChunkFea
     } else {
         const addx: c_int = @as(c_int, anchor.x) * c.CHUNK_SIZE;
         const addz: c_int = @as(c_int, anchor.z) * c.CHUNK_SIZE;
-        feature.x = @as(c_short, @truncate(@as(c_int, @intCast(feature.x)) + addx));
-        feature.z = @as(c_short, @truncate(@as(c_int, @intCast(feature.z)) + addz));
+        feature.x = std.math.lossyCast(c_short, @as(c_int, @intCast(feature.x)) + addx);
+        feature.z = std.math.lossyCast(c_short, @as(c_int, @intCast(feature.z)) + addz);
         feature.y = getHeightAtFromHash(
             ctx,
-            mod_abs(feature.x, c.CHUNK_SIZE),
-            mod_abs(feature.z, c.CHUNK_SIZE),
+            std.math.mod(c_int, feature.x, c.CHUNK_SIZE) catch unreachable,
+            std.math.mod(c_int, feature.z, c.CHUNK_SIZE) catch unreachable,
             anchor.x,
             anchor.z,
             anchor.hash,
             anchor.biome,
-        ) + 1;
-        feature.variant = @truncate((anchor.hash >> @as(u5, @intCast((feature.x + feature.z) & 31))) & 1);
+        ) +% 1;
+        feature.variant = @truncate((anchor.hash >> @as(u5, @intCast((feature.x +% feature.z) & 31))) & 1);
     }
     return feature;
 }
@@ -123,15 +112,15 @@ fn getTerrainAtFromCache(
             } else {
                 if (x == feature.x and z == feature.z) {
                     if (y == feature.y - 1) return c.B_dirt;
-                    if (y >= feature.y and y < feature.y - feature.variant + 6) return c.B_oak_log;
+                    if (y >= feature.y and y < feature.y -% feature.variant +% 6) return c.B_oak_log;
                 }
                 const dx: u8 = @intCast(if (x >= feature.x) x - feature.x else feature.x - x);
                 const dz: u8 = @intCast(if (z >= feature.z) z - feature.z else feature.z - z);
-                if (dx < 3 and dz < 3 and y > feature.y - feature.variant + 2 and y < feature.y - feature.variant + 5) {
-                    if (y == feature.y - feature.variant + 4 and dx == 2 and dz == 2) {} else return c.B_oak_leaves;
+                if (dx < 3 and dz < 3 and y > feature.y -% feature.variant +% 2 and y < feature.y -% feature.variant +% 5) {
+                    if (y == feature.y -% feature.variant +% 4 and dx == 2 and dz == 2) {} else return c.B_oak_leaves;
                 }
-                if (dx < 2 and dz < 2 and y >= feature.y - feature.variant + 5 and y <= feature.y - feature.variant + 6) {
-                    if (y == feature.y - feature.variant + 6 and dx == 1 and dz == 1) {} else return c.B_oak_leaves;
+                if (dx < 2 and dz < 2 and y >= feature.y -% feature.variant +% 5 and y <= feature.y -% feature.variant +% 6) {
+                    if (y == feature.y -% feature.variant +% 6 and dx == 1 and dz == 1) {} else return c.B_oak_leaves;
                 }
                 if (y == height) return c.B_grass_block;
                 return c.B_air;
@@ -140,23 +129,23 @@ fn getTerrainAtFromCache(
         c.W_desert => {
             if (x == feature.x and z == feature.z) {
                 if (feature.variant == 0) {
-                    if (y == height + 1) return c.B_dead_bush;
+                    if (y == height +% 1) return c.B_dead_bush;
                 } else if (y > height) {
-                    if ((height & 1) != 0 and y <= height + 3) return c.B_cactus;
-                    if (y <= height + 2) return c.B_cactus;
+                    if ((height & 1) != 0 and y <= height +% 3) return c.B_cactus;
+                    if (y <= height +% 2) return c.B_cactus;
                 }
             }
         },
         c.W_mangrove_swamp => {
             if (x == feature.x and z == feature.z and y == 64 and height < 63) return c.B_lily_pad;
-            if (y == height + 1) {
+            if (y == height +% 1) {
                 const dx: c_int = if (x >= feature.x) x - feature.x else feature.x - x;
                 const dz: c_int = if (z >= feature.z) z - feature.z else feature.z - z;
                 if (dx + dz < 4) return c.B_moss_carpet;
             }
         },
         c.W_snowy_plains => {
-            if (x == feature.x and z == feature.z and y == height + 1 and height >= 64) return c.B_short_grass;
+            if (x == feature.x and z == feature.z and y == height +% 1 and height >= 64) return c.B_short_grass;
         },
         else => {},
     };
@@ -170,12 +159,12 @@ fn getTerrainAtFromCache(
                 else => c.B_grass_block,
             };
         }
-        if (anchor.biome == c.W_snowy_plains and y == height + 1) return c.B_snow;
+        if (anchor.biome == c.W_snowy_plains and y == height +% 1) return c.B_snow;
     }
 
-    if (y <= height - 4) {
-        const gap: i8 = @intCast(height - c.TERRAIN_BASE_HEIGHT);
-        if (y < c.CAVE_BASE_DEPTH + gap and y > c.CAVE_BASE_DEPTH - gap) return c.B_air;
+    if (y <= height -% 4) {
+        const gap: i8 = @intCast(height -% c.TERRAIN_BASE_HEIGHT);
+        if (y < c.CAVE_BASE_DEPTH +% gap and y > c.CAVE_BASE_DEPTH -% gap) return c.B_air;
 
         var ore_y: u8 = (@as(u8, @intCast(rx & 15)) << 4) | @as(u8, @intCast(rz & 15));
         ore_y ^= ore_y << 4;
@@ -230,12 +219,12 @@ pub export fn getChunkBiome(ctx: *c.ServerContext, x_in: c_short, z_in: c_short)
     const x: c_int = x_in + c.BIOME_RADIUS;
     const z: c_int = z_in + c.BIOME_RADIUS;
 
-    const dx: i8 = @intCast(c.BIOME_RADIUS - mod_abs(x, c.BIOME_SIZE));
-    const dz: i8 = @intCast(c.BIOME_RADIUS - mod_abs(z, c.BIOME_SIZE));
+    const dx: i8 = @intCast(c.BIOME_RADIUS - (std.math.mod(c_int, x, c.BIOME_SIZE) catch unreachable));
+    const dz: i8 = @intCast(c.BIOME_RADIUS - (std.math.mod(c_int, z, c.BIOME_SIZE) catch unreachable));
     if (@as(c_int, dx) * dx + @as(c_int, dz) * dz > c.BIOME_RADIUS * c.BIOME_RADIUS) return c.W_beach;
 
-    const biome_x: c_int = div_floor(x, c.BIOME_SIZE);
-    const biome_z: c_int = div_floor(z, c.BIOME_SIZE);
+    const biome_x: c_int = std.math.divFloor(c_int, x, c.BIOME_SIZE) catch unreachable;
+    const biome_z: c_int = std.math.divFloor(c_int, z, c.BIOME_SIZE) catch unreachable;
     const index: c_int = (biome_x & 3) + ((biome_z * 4) & 15);
     const shift: u5 = @intCast((index * 2) & 31);
     return @intCast((ctx.world_seed >> shift) & 3);
@@ -252,34 +241,32 @@ pub export fn getHeightAtFromHash(
 ) u8 {
     if (rx == 0 and rz == 0) {
         const height = getCornerHeight(chunk_hash, biome);
-        if (height > 67) return height - 1;
+        if (height > 67) return height -% 1;
     }
     return interpolate(
         getCornerHeight(chunk_hash, biome),
-        getCornerHeight(getChunkHash(ctx, @as(c_short, @truncate(_x + 1)), @as(c_short, @truncate(_z))), getChunkBiome(ctx, @as(c_short, @truncate(_x + 1)), @as(c_short, @truncate(_z)))),
-        getCornerHeight(getChunkHash(ctx, @as(c_short, @truncate(_x)), @as(c_short, @truncate(_z + 1))), getChunkBiome(ctx, @as(c_short, @truncate(_x)), @as(c_short, @truncate(_z + 1)))),
-        getCornerHeight(getChunkHash(ctx, @as(c_short, @truncate(_x + 1)), @as(c_short, @truncate(_z + 1))), getChunkBiome(ctx, @as(c_short, @truncate(_x + 1)), @as(c_short, @truncate(_z + 1)))),
+        getCornerHeight(getChunkHash(ctx, std.math.lossyCast(c_short, _x + 1), std.math.lossyCast(c_short, _z)), getChunkBiome(ctx, std.math.lossyCast(c_short, _x + 1), std.math.lossyCast(c_short, _z))),
+        getCornerHeight(getChunkHash(ctx, std.math.lossyCast(c_short, _x), std.math.lossyCast(c_short, _z + 1)), getChunkBiome(ctx, std.math.lossyCast(c_short, _x), std.math.lossyCast(c_short, _z + 1))),
+        getCornerHeight(getChunkHash(ctx, std.math.lossyCast(c_short, _x + 1), std.math.lossyCast(c_short, _z + 1)), getChunkBiome(ctx, std.math.lossyCast(c_short, _x + 1), std.math.lossyCast(c_short, _z + 1))),
         rx,
         rz,
     );
 }
 
 pub export fn getHeightAt(ctx: *c.ServerContext, x: c_int, z: c_int) u8 {
-    const _x = div_floor(x, c.CHUNK_SIZE);
-    const _z = div_floor(z, c.CHUNK_SIZE);
-    const rx = mod_abs(x, c.CHUNK_SIZE);
-    const rz = mod_abs(z, c.CHUNK_SIZE);
-    const chunk_hash = getChunkHash(ctx, @as(c_short, @truncate(_x)), @as(c_short, @truncate(_z)));
-    const biome = getChunkBiome(ctx, @as(c_short, @truncate(_x)), @as(c_short, @truncate(_z)));
+    const _x = std.math.divFloor(c_int, x, c.CHUNK_SIZE) catch unreachable;
+    const _z = std.math.divFloor(c_int, z, c.CHUNK_SIZE) catch unreachable;
+    const rx = std.math.mod(c_int, x, c.CHUNK_SIZE) catch unreachable;
+    const rz = std.math.mod(c_int, z, c.CHUNK_SIZE) catch unreachable;
+    const chunk_hash = getChunkHash(ctx, std.math.lossyCast(c_short, _x), std.math.lossyCast(c_short, _z));
+    const biome = getChunkBiome(ctx, std.math.lossyCast(c_short, _x), std.math.lossyCast(c_short, _z));
     return getHeightAtFromHash(ctx, rx, rz, _x, _z, chunk_hash, biome);
 }
 
 pub export fn getTerrainAt(ctx: *c.ServerContext, x: c_int, y: c_int, z: c_int, anchor: c.ChunkAnchor) u8 {
     if (y > 80) return c.B_air;
-    var rx = @rem(x, c.CHUNK_SIZE);
-    var rz = @rem(z, c.CHUNK_SIZE);
-    if (rx < 0) rx += c.CHUNK_SIZE;
-    if (rz < 0) rz += c.CHUNK_SIZE;
+    const rx = std.math.mod(c_int, x, c.CHUNK_SIZE) catch unreachable;
+    const rz = std.math.mod(c_int, z, c.CHUNK_SIZE) catch unreachable;
     const feature = getFeatureFromAnchor(ctx, anchor);
     const height = getHeightAtFromHash(ctx, rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
     return getTerrainAtFromCache(x, y, z, rx, rz, anchor, feature, height);
@@ -287,13 +274,13 @@ pub export fn getTerrainAt(ctx: *c.ServerContext, x: c_int, y: c_int, z: c_int, 
 
 pub export fn getBlockAt(ctx: *c.ServerContext, x: c_int, y: c_int, z: c_int) u8 {
     if (y < 0) return c.B_bedrock;
-    const xs: c_short = @as(c_short, @truncate(x));
-    const ys: u8 = @intCast(@mod(y, 256));
-    const zs: c_short = @as(c_short, @truncate(z));
+    const xs: c_short = std.math.lossyCast(c_short, x);
+    const ys: u8 = std.math.lossyCast(u8, y);
+    const zs: c_short = std.math.lossyCast(c_short, z);
     const block_change = c.getBlockChange(ctx, xs, ys, zs);
     if (block_change != 0xFF) return block_change;
-    const anchor_x: c_short = @intCast(div_floor(x, c.CHUNK_SIZE));
-    const anchor_z: c_short = @intCast(div_floor(z, c.CHUNK_SIZE));
+    const anchor_x: c_short = std.math.lossyCast(c_short, std.math.divFloor(c_int, x, c.CHUNK_SIZE) catch unreachable);
+    const anchor_z: c_short = std.math.lossyCast(c_short, std.math.divFloor(c_int, z, c.CHUNK_SIZE) catch unreachable);
     const anchor = c.ChunkAnchor{
         .x = anchor_x,
         .z = anchor_z,
@@ -317,8 +304,8 @@ pub export fn buildChunkSection(ctx: *c.ServerContext, cx: c_int, cy: c_int, cz:
         var xi: c_int = cx;
         while (xi < cx + 16 + c.CHUNK_SIZE) : (xi += c.CHUNK_SIZE) {
             var anchor: *c.ChunkAnchor = &chunk_anchors[anchor_index];
-            anchor.x = @as(c_short, @truncate(@divTrunc(xi, c.CHUNK_SIZE)));
-            anchor.z = @as(c_short, @truncate(@divTrunc(zi, c.CHUNK_SIZE)));
+            anchor.x = std.math.lossyCast(c_short, @divTrunc(xi, c.CHUNK_SIZE));
+            anchor.z = std.math.lossyCast(c_short, @divTrunc(zi, c.CHUNK_SIZE));
             anchor.hash = getChunkHash(ctx, anchor.x, anchor.z);
             anchor.biome = getChunkBiome(ctx, anchor.x, anchor.z);
             if (zi != cz + 16 and xi != cx + 16) {
