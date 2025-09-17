@@ -562,7 +562,7 @@ uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
     // By design, this loop also continues past the current search range,
     // which naturally appends the chest to the end if a gap isn't found.
     int last_real_entry = first_gap - 1;
-    for (int i = first_gap; i <= block_changes_count + 15; i ++) {
+    for (int i = first_gap; i <= block_changes_count + 15 && i < MAX_BLOCK_CHANGES; i ++) {
       if (block_changes[i].block != 0xFF) {
         last_real_entry = i;
         continue;
