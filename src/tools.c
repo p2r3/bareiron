@@ -238,7 +238,6 @@ uint64_t splitmix64 (uint64_t state) {
   return z ^ (z >> 31);
 }
 
-
 #ifndef ESP_PLATFORM
 // Returns system time in microseconds.
 // On ESP-IDF, this is available in "esp_timer.h", and returns time *since

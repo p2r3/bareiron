@@ -125,14 +125,15 @@ int getPlayerData (int client_fd, PlayerData **output) {
   return 1;
 }
 
-// Returns the index of the player with the given name, or -1 if not founds
-int getPlayerByName (int start_offset, int end_offset, uint8_t *buffer[256]) {
+// Returns the index of the player with the given name, or -1 if not found
+int getPlayerByName (int start_offset, int end_offset, uint8_t buffer[256]) {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
-    if (
-      (strlen(player_data[i].name) == end_offset - start_offset) && 
-      (strncmp(buffer + start_offset, player_data[i].name, end_offset - start_offset) == 0)
-    ) return i;
+    int j;
+    for (j = start_offset; j < end_offset && j < 256 && buffer[j] != ' '; j++) {
+      if (player_data[i].name[j - start_offset] != buffer[j]) break;
+    }
+    if ((j == end_offset || buffer[j] == ' ') && j < 256) return i;
   }
   return -1;
 }

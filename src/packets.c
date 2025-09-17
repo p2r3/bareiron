@@ -1131,47 +1131,7 @@ int cs_chat (int client_fd) {
     message_len = 224;
   }
 
-if (recv_buffer[0] == '!') {
-  // Handle commands
-  if (!strncmp(recv_buffer, "!msg", 4)) {
-      int target_name_offset = 5, target_name_end_offset = 0, message_offset = 0;
-      // Skip spaces after "!msg"
-      while (recv_buffer[target_name_offset] == ' ') target_name_offset++;
-      target_name_end_offset = target_name_offset;
-      // Extract target name
-      while (recv_buffer[target_name_offset] != ' ' && recv_buffer[target_name_offset] != '\0' && target_name_end_offset < 21) target_name_end_offset++;
-      message_offset = target_name_end_offset;
-      // Skip spaces before message
-      while (recv_buffer[message_offset] == ' ') message_offset++;
-      char *msg = (char *)(recv_buffer + message_offset);
-      int msg_len = strlen(msg);
-
-      int target = getPlayerByName(target_name_offset, target_name_end_offset, recv_buffer);
-      if (target == -1) {
-        sc_systemChat(client_fd, "Player not found", 16);
-      } else {
-        // Format: <sender> -> you: <msg>
-        memmove(recv_buffer + message_offset, recv_buffer, 255 - message_offset);
-        int name_len = strlen(player->name);
-        memcpy(recv_buffer, player->name, name_len);
-        memcpy(recv_buffer + name_len, " -> you: ", 9);
-        message_offset = name_len + 9;
-        memcpy(recv_buffer + message_offset, msg, msg_len + 1);
-        recv_buffer[message_offset + msg_len] = '\0';
-        sc_systemChat(player_data[target].client_fd, (char *)recv_buffer, (uint16_t)(message_offset + msg_len));
-        /*char formatted[256];
-        int n = snprintf(formatted, sizeof(formatted), "%s -> you: %s", player->name, msg);
-        if (n > 0 && n < sizeof(formatted)) {
-            sc_systemChat(player_data[target].client_fd, formatted, (uint16_t)strlen(formatted));
-        }*/
-      }
-    } else if (!strncmp(recv_buffer, "!help", 5)) {
-        const char *help_msg = "Commands:\n!msg <player> <message> - Send private message\n!help - Show this help message";
-        sc_systemChat(client_fd, (char *)help_msg, (uint16_t)strlen(help_msg));
-    } else {
-        sc_systemChat(client_fd, "Unknown command", 15);
-    }
-} else {
+  if (recv_buffer[0] != '!') {
     // Shift message contents forward to make space for player name tag
     memmove(recv_buffer + name_len + 3, recv_buffer, message_len + 1);
     // Copy player name to index 1
@@ -1186,6 +1146,38 @@ if (recv_buffer[0] == '!') {
       if (player_data[i].client_fd == -1) continue;
       if (player_data[i].flags & 0x20) continue;
       sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, message_len + name_len + 3);
+    }
+  } else {
+    // Handle commands
+    if (!strncmp(recv_buffer, "!msg", 4)) {
+      int target_name_offset = 5, target_name_end_offset = 0, message_offset = 0;
+      // Skip spaces after "!msg"
+      while (recv_buffer[target_name_offset] == ' ') target_name_offset++;
+      target_name_end_offset = target_name_offset;
+      // Extract target name
+      while (recv_buffer[target_name_end_offset] != ' ' && recv_buffer[target_name_end_offset] != '\0' && target_name_end_offset < 21) target_name_end_offset++;
+      message_offset = target_name_end_offset;
+      // Skip spaces before message
+      while (recv_buffer[message_offset] == ' ') message_offset++;
+
+      int target = getPlayerByName(target_name_offset, target_name_end_offset, recv_buffer);
+      if (target == -1) {
+        sc_systemChat(client_fd, "Player not found", 16);
+      } else {
+        // Format: <sender> -> you: <msg>
+        int name_len = strlen(player->name);
+        memmove(recv_buffer + name_len + 9, recv_buffer + message_offset, strlen((char *)recv_buffer + message_offset) + 1);
+        memcpy(recv_buffer, player->name, name_len);
+        memcpy(recv_buffer + name_len, " -> you: ", 9);
+        sc_systemChat(player_data[target].client_fd, (char *)recv_buffer, (uint16_t)(name_len + 9 + strlen((char *)recv_buffer + name_len + 9)));
+      }
+    } else if (!strncmp(recv_buffer, "!help", 5)) {
+        const char help_msg[] = "Commands:\n"
+        "!msg <player> <message> - Send private message\n"
+        "!help - Show this help message";
+        sc_systemChat(client_fd, (char *)help_msg, (uint16_t)sizeof(help_msg));
+    } else {
+        sc_systemChat(client_fd, "Unknown command", 15);
     }
   }
 
