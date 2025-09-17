@@ -21,7 +21,6 @@ pub fn build(b: *std.Build) void {
             "src/packets.c",
             "src/procedures.c",
             "src/registries.c",
-            "src/worldgen.c",
         },
         .flags = &.{},
     });

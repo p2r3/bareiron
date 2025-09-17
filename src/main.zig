@@ -18,6 +18,9 @@ comptime {
 comptime {
     _ = @import("commands.zig");
 }
+comptime {
+    _ = @import("worldgen.zig");
+}
 const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 
