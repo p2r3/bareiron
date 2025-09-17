@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addCSourceFiles(.{
         .files = &.{
             "src/dispatch.c",
+            "src/dispatch_play_movement.c",
+            "src/dispatch_play_chat.c",
+            "src/dispatch_play_inventory.c",
+            "src/dispatch_play_system.c",
             "src/packets.c",
             "src/procedures.c",
             "src/registries.c",
