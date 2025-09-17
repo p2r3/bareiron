@@ -21,6 +21,7 @@ comptime {
 comptime {
     _ = @import("worldgen.zig");
 }
+const dispatch = @import("dispatch.zig");
 const state_mod = @import("state.zig");
 const builtin = @import("builtin");
 
@@ -298,5 +299,5 @@ fn processClientPacket(fd: SocketFD) void {
     const packet_id = c.readVarInt(@ptrCast(&g_state.context), @intCast(fd));
     if (packet_id == c.VARNUM_ERROR) return;
     const st = c.getClientState(@ptrCast(&g_state.context), @intCast(fd));
-    c.handlePacket(@ptrCast(&g_state.context), @intCast(fd), length - c.sizeVarInt(@intCast(packet_id)), @intCast(packet_id), st);
+    dispatch.handlePacket(@ptrCast(&g_state.context), @intCast(fd), length - c.sizeVarInt(@intCast(packet_id)), @intCast(packet_id), st);
 }

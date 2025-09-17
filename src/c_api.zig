@@ -29,7 +29,6 @@ pub const c = @cImport({
     @cInclude("packets.h");
     @cInclude("procedures.h");
     @cInclude("serialize.h");
-    @cInclude("dispatch.h");
     @cInclude("worldgen.h");
     @cInclude("registries.h");
 });
