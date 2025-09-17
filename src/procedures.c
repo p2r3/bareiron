@@ -1992,3 +1992,34 @@ int sizeEntityMetadata (EntityData *metadata, size_t length) {
   }
   return total_size;
 }
+
+void completePlayerSpawnSequence(ServerContext *ctx, int client_fd) {
+  setClientState(ctx, client_fd, STATE_PLAY);
+  sc_loginPlay(client_fd);
+  sc_commands(client_fd);
+
+  PlayerData *player;
+  if (getPlayerData(ctx, client_fd, &player)) return;
+
+  spawnPlayer(ctx, player);
+
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (ctx->player_data[i].client_fd == -1) continue;
+    if (ctx->player_data[i].flags & 0x20) continue;
+    sc_playerInfoUpdateAddPlayer(client_fd, ctx->player_data[i]);
+    sc_spawnEntityPlayer(client_fd, ctx->player_data[i]);
+  }
+
+  uint8_t uuid[16];
+  uint32_t r_uuid = fast_rand(ctx);
+  memcpy(uuid, &r_uuid, 4);
+  for (int i = 0; i < MAX_MOBS; i++) {
+    if (ctx->mob_data[i].type == 0) continue;
+    if ((ctx->mob_data[i].data & 31) == 0) continue;
+    memcpy(uuid + 4, &i, 4);
+    sc_spawnEntity(client_fd, -2 - i, uuid, ctx->mob_data[i].type, ctx->mob_data[i].x, ctx->mob_data[i].y, ctx->mob_data[i].z, 0, 0);
+    broadcastMobMetadata(ctx, client_fd, -2 - i);
+  }
+
+  handlePlayerJoin(ctx, player);
+}

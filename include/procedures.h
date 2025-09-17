@@ -54,4 +54,8 @@ ssize_t writeEntityData (int client_fd, EntityData *data);
 int sizeEntityData (EntityData *data);
 int sizeEntityMetadata (EntityData *metadata, size_t length);
 
+// Completes the transition into PLAY state and performs the full
+// join/spawn/broadcast sequence for a player after configuration.
+void completePlayerSpawnSequence(ServerContext *ctx, int client_fd);
+
 #endif
