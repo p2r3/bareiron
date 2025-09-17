@@ -109,7 +109,54 @@ static void handleConfigurationPacket(ServerContext *ctx, int client_fd, int len
 	}
 }
 
+// --- PLAY sub-handlers ---
+static void handlePlayMovement(ServerContext *ctx, int client_fd, int length, int packet_id);
+static void handlePlayChat(ServerContext *ctx, int client_fd, int length, int packet_id);
+static void handlePlayInventory(ServerContext *ctx, int client_fd, int length, int packet_id);
+static void handlePlaySystem(ServerContext *ctx, int client_fd, int length, int packet_id);
+
 static void handlePlayPacket(ServerContext *ctx, int client_fd, int length, int packet_id) {
+	switch (packet_id) {
+		case 0x1D:
+		case 0x1E:
+		case 0x1F:
+		case 0x20:
+			handlePlayMovement(ctx, client_fd, length, packet_id);
+			return;
+		case 0x06:
+		case 0x07:
+		case 0x08:
+			handlePlayChat(ctx, client_fd, length, packet_id);
+			return;
+		case 0x11:
+		case 0x12:
+		case 0x19:
+		case 0x28:
+		case 0x34:
+		case 0x3C:
+		case 0x3F:
+		case 0x40:
+			handlePlayInventory(ctx, client_fd, length, packet_id);
+			return;
+		case 0x0B:
+		case 0x1B:
+		case 0x29:
+		case 0x2A:
+		case 0x2B:
+			handlePlaySystem(ctx, client_fd, length, packet_id);
+			return;
+		default:
+			#ifdef DEV_LOG_UNKNOWN_PACKETS
+				printf("Unknown packet: 0x");
+				if (packet_id < 16) printf("0");
+				printf("%X, length: %d, state: %d\n\n", packet_id, length, getClientState(ctx, client_fd));
+			#endif
+			recv_all(client_fd, ctx->recv_buffer, length, false);
+			return;
+	}
+}
+
+static void handlePlayChat(ServerContext *ctx, int client_fd, int length, int packet_id) {
 	switch (packet_id) {
 		case 0x06:
 		case 0x07:
@@ -118,23 +165,40 @@ static void handlePlayPacket(ServerContext *ctx, int client_fd, int length, int 
 		case 0x08:
 			cs_chat(ctx, client_fd);
 			break;
-		case 0x0B:
-			cs_clientStatus(ctx, client_fd);
-			break;
-		case 0x0C:
-			break;
-		case 0x11:
-			cs_clickContainer(ctx, client_fd);
-			break;
-		case 0x12:
-			cs_closeContainer(ctx, client_fd);
-			break;
-		case 0x1B:
+		default:
 			recv_all(client_fd, ctx->recv_buffer, length, false);
-			break;
-		case 0x19:
-			cs_interact(ctx, client_fd);
-			break;
+	}
+}
+
+static void handlePlayInventory(ServerContext *ctx, int client_fd, int length, int packet_id) {
+	switch (packet_id) {
+		case 0x11: cs_clickContainer(ctx, client_fd); break;
+		case 0x12: cs_closeContainer(ctx, client_fd); break;
+		case 0x19: cs_interact(ctx, client_fd); break;
+		case 0x28: cs_playerAction(ctx, client_fd); break;
+		case 0x34: cs_setHeldItem(ctx, client_fd); break;
+		case 0x3C: cs_swingArm(ctx, client_fd); break;
+		case 0x3F: cs_useItemOn(ctx, client_fd); break;
+		case 0x40: cs_useItem(ctx, client_fd); break;
+		default:
+			recv_all(client_fd, ctx->recv_buffer, length, false);
+	}
+}
+
+static void handlePlaySystem(ServerContext *ctx, int client_fd, int length, int packet_id) {
+	switch (packet_id) {
+		case 0x0B: cs_clientStatus(ctx, client_fd); break;
+		case 0x1B: recv_all(client_fd, ctx->recv_buffer, length, false); break;
+		case 0x29: cs_playerCommand(ctx, client_fd); break;
+		case 0x2A: cs_playerInput(ctx, client_fd); break;
+		case 0x2B: cs_playerLoaded(ctx, client_fd); break;
+		default:
+			recv_all(client_fd, ctx->recv_buffer, length, false);
+	}
+}
+
+static void handlePlayMovement(ServerContext *ctx, int client_fd, int length, int packet_id) {
+	switch (packet_id) {
 		case 0x1D:
 		case 0x1E:
 		case 0x1F:
@@ -268,38 +332,8 @@ static void handlePlayPacket(ServerContext *ctx, int client_fd, int length, int 
 			}
 			break;
 		}
-		case 0x28:
-			cs_playerAction(ctx, client_fd);
-			break;
-		case 0x29:
-			cs_playerCommand(ctx, client_fd);
-			break;
-		case 0x2A:
-			cs_playerInput(ctx, client_fd);
-			break;
-		case 0x2B:
-			cs_playerLoaded(ctx, client_fd);
-			break;
-		case 0x34:
-			cs_setHeldItem(ctx, client_fd);
-			break;
-		case 0x3C:
-			cs_swingArm(ctx, client_fd);
-			break;
-		case 0x3F:
-			cs_useItemOn(ctx, client_fd);
-			break;
-		case 0x40:
-			cs_useItem(ctx, client_fd);
-			break;
 		default:
-			#ifdef DEV_LOG_UNKNOWN_PACKETS
-				printf("Unknown packet: 0x");
-				if (packet_id < 16) printf("0");
-				printf("%X, length: %d, state: %d\n\n", packet_id, length, getClientState(ctx, client_fd));
-			#endif
 			recv_all(client_fd, ctx->recv_buffer, length, false);
-			break;
 	}
 }
 
