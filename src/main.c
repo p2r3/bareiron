@@ -388,14 +388,11 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
               #ifdef ENABLE_MOB_VARIANTS
               int biome = getChunkBiome(mob_x / CHUNK_SIZE, mob_z / CHUNK_SIZE);
               if(biome == W_desert) {
-                printf("Spawning husk\n");
                 spawnMob(65, mob_x, mob_y, mob_z, 20); // Husk
               } else {
-                printf("Spawning zombie\n");
                 spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
               }
               #else
-              printf("Spawning zombie\n");
               spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
               #endif
             }
