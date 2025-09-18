@@ -1772,10 +1772,10 @@ void handleServerTick (int64_t time_since_last_tick) {
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
         hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
         #ifdef ENABLE_MOB_VARIANTS
-          // Apply hunger effect from husks
+          // Apply husk hunger penalty
           if(closest_player->health > 0 && mob_data[i].type == 65) {
             // If there is enough saturation to take the penalty, just subtract
-            // If not, then set saturation to zero and apply a 10x smaller penalty to hunger
+            // If not, then reset saturation and apply a smaller penalty to hunger
             if(closest_player->saturation > HUSK_SATURATION_PENALTY) {
               closest_player->saturation -= HUSK_SATURATION_PENALTY;
             } else {
