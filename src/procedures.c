@@ -1771,6 +1771,26 @@ void handleServerTick (int64_t time_since_last_tick) {
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
         hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        #ifdef ENABLE_MOB_VARIANTS
+          // Apply hunger effect from husks
+          if(closest_player->health > 0 && mob_data[i].type == 65) {
+            // If there is enough saturation to take the penalty, just subtract
+            // If not, then set saturation to zero and apply a 10x smaller penalty to hunger
+            if(closest_player->saturation > HUSK_SATURATION_PENALTY) {
+              closest_player->saturation -= HUSK_SATURATION_PENALTY;
+            } else {
+              uint8_t penalty = HUSK_SATURATION_PENALTY - closest_player->saturation;
+              closest_player->saturation = 200;
+              uint8_t hunger_penalty = penalty < HUSK_HUNGER_PENALTY_FACTOR ? 1 : penalty / HUSK_HUNGER_PENALTY_FACTOR;
+              if(hunger_penalty > closest_player->hunger) {
+                closest_player->hunger = 0;
+              } else {
+                closest_player->hunger -= hunger_penalty;
+              }
+              sc_setHealth(closest_player->client_fd, closest_player->health, closest_player->hunger, closest_player->saturation);
+            }
+          }
+        #endif
         continue;
       }
 
