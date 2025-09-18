@@ -45,6 +45,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
 void checkFluidUpdate (short x, uint8_t y, short z, uint8_t block);
 
 void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health);
+void spawnHostileMob(short mob_x, short mob_y, short mob_z);
 void interactEntity (int entity_id, int interactor_id);
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage);
 void handleServerTick (int64_t time_since_last_tick);
@@ -55,7 +56,5 @@ ssize_t writeEntityData (int client_fd, EntityData *data);
 
 int sizeEntityData (EntityData *data);
 int sizeEntityMetadata (EntityData *metadata, size_t length);
-
-void spawnHostileMob(short mob_x, short mob_y, short mob_z);
 
 #endif

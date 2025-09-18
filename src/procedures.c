@@ -1397,6 +1397,19 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
 }
 
+void spawnHostileMob(short mob_x, short mob_y, short mob_z){
+
+  int biome = getChunkBiome(mob_x / CHUNK_SIZE, mob_z / CHUNK_SIZE);
+  
+  if(biome == W_desert) {
+    spawnMob(65, mob_x, mob_y, mob_z, 20); // Husk
+    return;
+  }
+
+  spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+  
+}
+
 void interactEntity (int entity_id, int interactor_id) {
 
   PlayerData *player;
@@ -1972,17 +1985,4 @@ int sizeEntityMetadata (EntityData *metadata, size_t length) {
     total_size += size;
   }
   return total_size;
-}
-
-void spawnHostileMob(short mob_x, short mob_y, short mob_z){
-
-  int biome = getChunkBiome(mob_x / CHUNK_SIZE, mob_z / CHUNK_SIZE);
-  printf("spawning mob in %d %d %d %d\n", mob_x, mob_y, mob_z, biome);
-  if(biome == W_desert) {
-    spawnMob(65, mob_x, mob_y, mob_z, 20); // Husk
-    return;
-  }
-
-  spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
-  
 }
