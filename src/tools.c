@@ -218,7 +218,7 @@ double readDouble (int client_fd) {
 }
 
 // Receive length prefixed data with bounds checking
-ssize_t readLengthPrefixedData(int client_fd) {
+ssize_t readLengthPrefixedData (int client_fd) {
   uint32_t length = readVarInt(client_fd);
   if (length >= MAX_RECV_BUF_LEN) {
     printf("ERROR: Received length (%u) exceeds maximum (%u)\n", length, MAX_RECV_BUF_LEN);
