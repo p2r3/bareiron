@@ -145,6 +145,9 @@
 // If defined, players are able to receive damage from nearby cacti.
 #define ENABLE_CACTUS_DAMAGE
 
+// If defined, deserts will spawn husks instead of zombies
+#define ENABLE_MOB_VARIANTS
+
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
 
