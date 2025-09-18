@@ -125,6 +125,22 @@ int getPlayerData (int client_fd, PlayerData **output) {
   return 1;
 }
 
+// Returns the player with the given name, or NULL if not found
+PlayerData *getPlayerByName (int start_offset, int end_offset, uint8_t *buffer) {
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    int j;
+    for (j = start_offset; j < end_offset && j < 256 && buffer[j] != ' '; j++) {
+      if (player_data[i].name[j - start_offset] != buffer[j]) break;
+    }
+    if ((j == end_offset || buffer[j] == ' ') && j < 256) {
+      return &player_data[i];
+    }
+  }
+  return NULL;
+}
+
+
 // Marks a client as disconnected and cleans up player data
 void handlePlayerDisconnect (int client_fd) {
   // Search for a corresponding player in the player data array
