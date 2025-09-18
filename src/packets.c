@@ -1113,19 +1113,14 @@ int sc_systemChat (int client_fd, char* message, uint16_t len) {
 // C->S Chat Message
 int cs_chat (int client_fd) {
 
-  readString(client_fd);
+  // To be safe, cap messages to 32 bytes before the buffer length
+  readStringN(client_fd, 224);
 
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
   size_t message_len = strlen((char *)recv_buffer);
   uint8_t name_len = strlen(player->name);
-
-  // To be safe, cap messages to 32 bytes before the buffer length
-  if (message_len > 224) {
-    recv_buffer[224] = '\0';
-    message_len = 224;
-  }
 
   // Shift message contents forward to make space for player name tag
   memmove(recv_buffer + name_len + 3, recv_buffer, message_len + 1);

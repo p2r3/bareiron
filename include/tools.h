@@ -34,6 +34,7 @@ double readDouble (int client_fd);
 
 ssize_t readLengthPrefixedData(int client_fd);
 void readString (int client_fd);
+void readStringN (int client_fd, uint32_t max_length);
 
 uint32_t fast_rand ();
 uint64_t splitmix64 (uint64_t state);

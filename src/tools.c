@@ -234,6 +234,28 @@ void readString (int client_fd) {
   recv_count = readLengthPrefixedData(client_fd);
   recv_buffer[recv_count] = '\0';
 }
+// Reads a networked string of up to N bytes into recv_buffer
+void readStringN (int client_fd, uint32_t max_length) {
+  // Forward to readString if max length is invalid
+  if (max_length >= MAX_RECV_BUF_LEN) {
+    readString(client_fd);
+    return;
+  }
+  // Attempt to read full string within maximum
+  uint32_t length = readVarInt(client_fd);
+  if (max_length > length) {
+    recv_count = recv_all(client_fd, recv_buffer, length, false);
+    recv_buffer[recv_count] = '\0';
+    return;
+  }
+  // Read string up to maximum, dump the rest
+  recv_count = recv_all(client_fd, recv_buffer, max_length, false);
+  recv_buffer[recv_count] = '\0';
+  uint8_t dummy;
+  for (uint32_t i = max_length; i < length; i ++) {
+    recv_all(client_fd, &dummy, 1, false);
+  }
+}
 
 uint32_t fast_rand () {
   rng_seed ^= rng_seed << 13;
