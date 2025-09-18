@@ -1399,9 +1399,9 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
 void spawnHostileMob(short mob_x, short mob_y, short mob_z){
 
-  int biome = getChunkBiome(mob_x / CHUNK_SIZE, mob_z / CHUNK_SIZE);
+  int biome = getChunkBiome(div_floor(mob_x, CHUNK_SIZE), div_floor(mob_z, CHUNK_SIZE));
   
-  if(biome == W_desert) {
+  if (biome == W_desert) {
     spawnMob(65, mob_x, mob_y, mob_z, 20); // Husk
     return;
   }
@@ -1785,16 +1785,16 @@ void handleServerTick (int64_t time_since_last_tick) {
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
         hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
         // Apply husk hunger penalty
-        if(closest_player->health > 0 && mob_data[i].type == 65) {
+        if (closest_player->health > 0 && mob_data[i].type == 65) {
           // If there is enough saturation to take the penalty, just subtract
           // If not, then reset saturation and apply a smaller penalty to hunger
-          if(closest_player->saturation > 150) {
+          if (closest_player->saturation > 150) {
             closest_player->saturation -= 150;
           } else {
             uint8_t penalty = 150 - closest_player->saturation;
             closest_player->saturation = 200;
             uint8_t hunger_penalty = penalty < 150 ? 1 : penalty / 50;
-            if(hunger_penalty > closest_player->hunger) {
+            if (hunger_penalty > closest_player->hunger) {
               closest_player->hunger = 0;
             } else {
               closest_player->hunger -= hunger_penalty;
