@@ -658,10 +658,8 @@ int cs_clickContainer (int client_fd) {
     count = (uint8_t)readVarInt(client_fd);
 
     // ignore components
-    tmp = readVarInt(client_fd);
-    recv_all(client_fd, recv_buffer, tmp, false);
-    tmp = readVarInt(client_fd);
-    recv_all(client_fd, recv_buffer, tmp, false);
+    readLengthPrefixedData(client_fd);
+    readLengthPrefixedData(client_fd);
 
     if (count > 0 && apply_changes) {
       *p_item = item;
@@ -691,10 +689,8 @@ int cs_clickContainer (int client_fd) {
     player->flagval_16 = readVarInt(client_fd);
     player->flagval_8 = readVarInt(client_fd);
     // ignore components
-    tmp = readVarInt(client_fd);
-    recv_all(client_fd, recv_buffer, tmp, false);
-    tmp = readVarInt(client_fd);
-    recv_all(client_fd, recv_buffer, tmp, false);
+    readLengthPrefixedData(client_fd);
+    readLengthPrefixedData(client_fd);
   } else {
     player->flagval_16 = 0;
     player->flagval_8 = 0;

@@ -32,6 +32,7 @@ int64_t readInt64 (int client_fd);
 float readFloat (int client_fd);
 double readDouble (int client_fd);
 
+ssize_t readLengthPrefixedData(int client_fd);
 void readString (int client_fd);
 
 uint32_t fast_rand ();

@@ -217,17 +217,21 @@ double readDouble (int client_fd) {
   return output;
 }
 
-// Reads a networked string into recv_buffer
-void readString (int client_fd) {
+// Receive length prefixed data with bounds checking
+ssize_t readLengthPrefixedData(int client_fd) {
   uint32_t length = readVarInt(client_fd);
-
   if (length >= MAX_RECV_BUF_LEN) {
     printf("ERROR: String length (%u) exceeds maximum (%u)", length, MAX_RECV_BUF_LEN);
     disconnectClient(&client_fd, -1);
-    recv_count = -1;
-    return;
+    recv_count = 0;
+    return 0;
   }
-  recv_count = recv_all(client_fd, recv_buffer, length, false);
+  return recv_all(client_fd, recv_buffer, length, false);
+}
+
+// Reads a networked string into recv_buffer
+void readString (int client_fd) {
+  recv_count = readLengthPrefixedData(client_fd);
   recv_buffer[recv_count] = '\0';
 }
 
