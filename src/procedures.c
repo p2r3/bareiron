@@ -1975,3 +1975,16 @@ int sizeEntityMetadata (EntityData *metadata, size_t length) {
   }
   return total_size;
 }
+
+void spawnHostileMob(short mob_x, short mob_y, short mob_z){
+
+  #ifdef ENABLE_MOB_VARIANTS
+  int biome = getChunkBiome(mob_x / CHUNK_SIZE, mob_z / CHUNK_SIZE);
+  printf("spawning mob in %d %d %d %d\n", mob_x, mob_y, mob_z, biome);
+  if(biome == W_desert) {
+    spawnMob(65, mob_x, mob_y, mob_z, 20); // Husk
+    return;
+  }
+  #endif
+  spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+}

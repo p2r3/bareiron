@@ -56,4 +56,6 @@ ssize_t writeEntityData (int client_fd, EntityData *data);
 int sizeEntityData (EntityData *data);
 int sizeEntityMetadata (EntityData *metadata, size_t length);
 
+void spawnHostileMob(short mob_x, short mob_y, short mob_z);
+
 #endif
