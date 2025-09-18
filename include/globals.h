@@ -145,13 +145,6 @@
 // If defined, players are able to receive damage from nearby cacti.
 #define ENABLE_CACTUS_DAMAGE
 
-// If defined, deserts will spawn husks instead of zombies
-#define ENABLE_MOB_VARIANTS
-
-// The amount of saturation a husk removes on hit (if saturation goes to 0, remove 50x less from hunger)
-#define HUSK_SATURATION_PENALTY 150
-#define HUSK_HUNGER_PENALTY_FACTOR 50
-
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
 
