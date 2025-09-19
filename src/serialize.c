@@ -42,26 +42,26 @@ int initSerializer () {
   if (file) {
 
     // Read block changes from the start of the file directly into memory
-    size_t read = fread(block_changes, 1, sizeof(block_changes), file);
-    if (read != sizeof(block_changes)) {
-      printf("Read %u bytes from \"world.bin\", expected %u (block changes). Aborting.\n", read, sizeof(block_changes));
-      fclose(file);
-      return 1;
-    }
+    // size_t read = fread(block_changes, 1, sizeof(block_changes), file);
+    // if (read != sizeof(block_changes)) {
+    //   printf("Read %u bytes from \"world.bin\", expected %u (block changes). Aborting.\n", read, sizeof(block_changes));
+    //   fclose(file);
+    //   return 1;
+    // }
     // Find the index of the last occupied entry to recover block_changes_count
-    for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
-      if (block_changes[i].block == 0xFF) continue;
-      if (block_changes[i].block == B_chest) i += 14;
-      if (i >= block_changes_count) block_changes_count = i + 1;
-    }
+    // for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
+    //   if (block_changes[i].block == 0xFF) continue;
+    //   if (block_changes[i].block == B_chest) i += 14;
+    //   if (i >= block_changes_count) block_changes_count = i + 1;
+    // }
     // Seek past block changes to start reading player data
-    if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
-      perror("Failed to seek to player data in \"world.bin\". Aborting.");
-      fclose(file);
-      return 1;
-    }
+    // if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
+    //   perror("Failed to seek to player data in \"world.bin\". Aborting.");
+    //   fclose(file);
+    //   return 1;
+    // }
     // Read player data directly into memory
-    read = fread(player_data, 1, sizeof(player_data), file);
+    size_t read = fread(player_data, 1, sizeof(player_data), file);
     fclose(file);
     if (read != sizeof(player_data)) {
       printf("Read %u bytes from \"world.bin\", expected %u (player data). Aborting.\n", read, sizeof(player_data));
@@ -82,26 +82,26 @@ int initSerializer () {
     }
     // Write initial block changes array
     // This should be done after all entries have had `block` set to 0xFF
-    size_t written = fwrite(block_changes, 1, sizeof(block_changes), file);
-    if (written != sizeof(block_changes)) {
-      perror(
-        "Failed to write initial block data to \"world.bin\".\n"
-        "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
-      );
-      fclose(file);
-      return 1;
-    }
+    // size_t written = fwrite(block_changes, 1, sizeof(block_changes), file);
+    // if (written != sizeof(block_changes)) {
+    //   perror(
+    //     "Failed to write initial block data to \"world.bin\".\n"
+    //     "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
+    //   );
+    //   fclose(file);
+    //   return 1;
+    // }
     // Seek past written block changes to start writing player data
-    if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
-      perror(
-        "Failed to seek past block changes in \"world.bin\"."
-        "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
-      );
-      fclose(file);
-      return 1;
-    }
+    // if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
+    //   perror(
+    //     "Failed to seek past block changes in \"world.bin\"."
+    //     "Consider checking permissions or disabling SYNC_WORLD_TO_DISK in \"globals.h\"."
+    //   );
+    //   fclose(file);
+    //   return 1;
+    // }
     // Write initial player data to disk (should be just nulls?)
-    written = fwrite(player_data, 1, sizeof(player_data), file);
+    size_t written = fwrite(player_data, 1, sizeof(player_data), file);
     fclose(file);
     if (written != sizeof(player_data)) {
       perror(
@@ -128,17 +128,17 @@ void writeBlockChangesToDisk (int from, int to) {
 
   for (int i = from; i <= to; i ++) {
     // Seek to relevant offset in file
-    if (fseek(file, i * sizeof(BlockChange), SEEK_SET) != 0) {
-      fclose(file);
-      perror("Failed to seek in \"world.bin\". Block updates have been dropped.");
-      return;
-    }
+    // if (fseek(file, i * sizeof(BlockChange), SEEK_SET) != 0) {
+    //   fclose(file);
+    //   perror("Failed to seek in \"world.bin\". Block updates have been dropped.");
+    //   return;
+    // }
     // Write block change entry to file
-    if (fwrite(&block_changes[i], 1, sizeof(BlockChange), file) != sizeof(BlockChange)) {
-      fclose(file);
-      perror("Failed to write to \"world.bin\". Block updates have been dropped.");
-      return;
-    }
+    // if (fwrite(&block_changes[i], 1, sizeof(BlockChange), file) != sizeof(BlockChange)) {
+    //   fclose(file);
+    //   perror("Failed to write to \"world.bin\". Block updates have been dropped.");
+    //   return;
+    // }
   }
 
   fclose(file);
@@ -154,11 +154,11 @@ void writePlayerDataToDisk () {
     return;
   }
   // Seek past block changes in file
-  if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
-    fclose(file);
-    perror("Failed to seek in \"world.bin\". Player updates have been dropped.");
-    return;
-  }
+  // if (fseek(file, sizeof(block_changes), SEEK_SET) != 0) {
+  //   fclose(file);
+  //   perror("Failed to seek in \"world.bin\". Player updates have been dropped.");
+  //   return;
+  // }
   // Write full player data array to file
   // Since this is a bigger write, it should ideally be done infrequently
   if (fwrite(&player_data, 1, sizeof(player_data), file) != sizeof(player_data)) {

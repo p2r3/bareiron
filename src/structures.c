@@ -1,5 +1,6 @@
 
 #include "globals.h"
+#include "blocks.h"
 #include "tools.h"
 #include "registries.h"
 #include "worldgen.h"
