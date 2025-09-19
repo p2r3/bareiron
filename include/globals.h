@@ -2,7 +2,9 @@
 #define H_GLOBALS
 
 #include <stdint.h>
-#include <unistd.h>
+#ifndef _MSC_VER
+  #include <unistd.h>
+#endif
 
 #ifdef ESP_PLATFORM
   #define WIFI_SSID "your-ssid"
@@ -10,6 +12,11 @@
   void task_yield ();
 #else
   #define task_yield();
+#endif
+
+#ifdef _MSC_VER
+  #include <BaseTsd.h>
+  typedef SSIZE_T ssize_t;
 #endif
 
 #define true 1

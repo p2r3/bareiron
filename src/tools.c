@@ -14,7 +14,6 @@
     #include <sys/socket.h>
     #include <arpa/inet.h>
   #endif
-  #include <unistd.h>
   #include <time.h>
   #ifndef CLOCK_MONOTONIC
     #define CLOCK_MONOTONIC 1
@@ -26,6 +25,7 @@
 #include "procedures.h"
 #include "tools.h"
 
+#ifndef _MSC_VER // MSVC cl: error C2375: 'htonll' : redefinition; different linkage
 #ifndef htonll
   static uint64_t htonll (uint64_t value) {
   #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -35,6 +35,7 @@
     return value;
   #endif
   }
+#endif
 #endif
 
 // Keep track of the total amount of bytes received with recv_all
@@ -271,6 +272,39 @@ uint64_t splitmix64 (uint64_t state) {
   return z ^ (z >> 31);
 }
 
+#ifdef _MSC_VER
+// https://stackoverflow.com/questions/5404277/porting-clock-gettime-to-windows/51974214#51974214
+#define MS_PER_SEC      1000ULL     // MS = milliseconds
+#define US_PER_MS       1000ULL     // US = microseconds
+#define HNS_PER_US      10ULL       // HNS = hundred-nanoseconds (e.g., 1 hns = 100 ns)
+#define NS_PER_US       1000ULL
+
+#define HNS_PER_SEC     (MS_PER_SEC * US_PER_MS * HNS_PER_US)
+#define NS_PER_HNS      (100ULL)    // NS = nanoseconds
+#define NS_PER_SEC      (MS_PER_SEC * US_PER_MS * NS_PER_US)
+
+int clock_gettime_monotonic(struct timespec *tv)
+{
+    static LARGE_INTEGER ticksPerSec;
+    LARGE_INTEGER ticks;
+
+    if (!ticksPerSec.QuadPart) {
+        QueryPerformanceFrequency(&ticksPerSec);
+        if (!ticksPerSec.QuadPart) {
+            errno = ENOTSUP;
+            return -1;
+        }
+    }
+
+    QueryPerformanceCounter(&ticks);
+
+    tv->tv_sec = (long)(ticks.QuadPart / ticksPerSec.QuadPart);
+    tv->tv_nsec = (long)(((ticks.QuadPart % ticksPerSec.QuadPart) * NS_PER_SEC) / ticksPerSec.QuadPart);
+
+    return 0;
+}
+#endif
+
 #ifndef ESP_PLATFORM
 // Returns system time in microseconds.
 // On ESP-IDF, this is available in "esp_timer.h", and returns time *since
@@ -278,7 +312,11 @@ uint64_t splitmix64 (uint64_t state) {
 // compatibility, this should only be used to measure time intervals.
 int64_t get_program_time () {
   struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
+  #ifdef _MSC_VER
+    clock_gettime_monotonic(&ts);
+  #else
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+  #endif
   return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
 }
 #endif
