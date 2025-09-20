@@ -1786,7 +1786,17 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
-        hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        if (mob_data[i].type == 30) { // If mob is a creeper explode instead of deal meelee damage
+          sc_entityEvent(player_data[j].client_fd, entity_id, 59);
+          if (panic >= 2) { // TODO: Maybe make panic timer max val from a constant? Like from TICKS_PER_SECOND
+            sc_entityEvent(player_data[j].client_fd, entity_id, 21);
+            // Make an explosion function
+          }
+
+          // Increase timer
+        } else {
+          hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        };
         continue;
       }
 
