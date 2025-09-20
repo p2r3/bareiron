@@ -16,27 +16,11 @@
 #include "serialize.h"
 #include "procedures.h"
 
-#define MOB_INTERP_STEPS 3
+#define MOB_INTERP_STEPS 6
 static int64_t mob_interp_start_time = 0;
 static uint8_t mob_interp_phase = MOB_INTERP_STEPS;
-
-static uint8_t mobBaseYaw (int8_t dx, int8_t dz) {
-  if (dx < 0) {
-    uint8_t yaw = 64;
-    if (dz < 0) return yaw + 32;
-    if (dz > 0) return yaw - 32;
-    return yaw;
-  }
-  if (dx > 0) {
-    uint8_t yaw = 192;
-    if (dz < 0) return yaw - 32;
-    if (dz > 0) return yaw + 32;
-    return yaw;
-  }
-  if (dz < 0) return 128;
-  if (dz > 0) return 0;
-  return 0;
-}
+static int8_t mob_interp_dy[MAX_MOBS];
+static uint8_t mob_interp_yaw[MAX_MOBS];
 
 int client_states[MAX_PLAYERS * 2];
 
@@ -1406,6 +1390,8 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
     mob_data[i].y = y;
     mobSetZ(&mob_data[i], z, 0);
     mob_data[i].data = health & 31;
+    mob_interp_dy[i] = 0;
+    mob_interp_yaw[i] = 0;
 
     // Forge a UUID from a random number and the mob's index
     uint8_t uuid[16];
@@ -1778,6 +1764,8 @@ void handleServerTick (int64_t time_since_last_tick) {
     short old_x = mobBlockX(&mob_data[i]);
     short old_z = mobBlockZ(&mob_data[i]);
     uint8_t old_y = mob_data[i].y;
+    int8_t prev_dx = mobDeltaX(&mob_data[i]);
+    int8_t prev_dz = mobDeltaZ(&mob_data[i]);
 
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
@@ -1798,18 +1786,25 @@ void handleServerTick (int64_t time_since_last_tick) {
     }
     short new_x = old_x, new_z = old_z;
     uint8_t new_y = old_y;
+    int fallback_attempts = 0;
 
     if (passive) { // Passive mob movement handling
 
-      // Move by one block on the X or Z axis
-      // Yaw is set to face in the direction of motion
-      if ((r >> 2) & 1) {
-        if ((r >> 1) & 1) new_x += 1;
-        else new_x -= 1;
+      int8_t move_dx = 0, move_dz = 0;
+
+      if (panic && (prev_dx != 0 || prev_dz != 0)) {
+        move_dx = prev_dx;
+        move_dz = prev_dz;
       } else {
-        if ((r >> 1) & 1) new_z += 1;
-        else new_z -= 1;
+        if ((r >> 2) & 1) {
+          move_dx = ((r >> 1) & 1) ? 1 : -1;
+        } else {
+          move_dz = ((r >> 1) & 1) ? 1 : -1;
+        }
       }
+
+      new_x += move_dx;
+      new_z += move_dz;
 
     } else { // Hostile mob movement handling
 
@@ -1837,6 +1832,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     }
 
+attempt_move:
     // Holds the block that the mob is moving into
     uint8_t block = getBlockAt(new_x, new_y, new_z);
     // Holds the block above the target block, i.e. the "head" block
@@ -1889,7 +1885,22 @@ void handleServerTick (int64_t time_since_last_tick) {
     else if (isPassableBlock(getBlockAt(new_x, new_y - 1, new_z))) new_y -= 1;
 
     // Exit early if all movement was cancelled
-    if (new_x == old_x && new_z == old_z && new_y == old_y) continue;
+    if (new_x == old_x && new_z == old_z && new_y == old_y) {
+      if (panic && fallback_attempts < 4) {
+        fallback_attempts ++;
+        uint32_t r_dir = fast_rand();
+        if (r_dir & 1) {
+          new_x = old_x + ((r_dir >> 1) & 1 ? 1 : -1);
+          new_z = old_z;
+        } else {
+          new_z = old_z + ((r_dir >> 2) & 1 ? 1 : -1);
+          new_x = old_x;
+        }
+        new_y = old_y;
+        goto attempt_move;
+      }
+      continue;
+    }
 
     // Prevent collisions with other mobs
     uint8_t colliding = false;
@@ -1914,12 +1925,22 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     int8_t delta_x = (int8_t)(new_x - old_x);
     int8_t delta_z = (int8_t)(new_z - old_z);
+    int8_t delta_y = (int8_t)(new_y - old_y);
 
     mobSetX(&mob_data[i], new_x, delta_x);
     mob_data[i].y = new_y;
     mobSetZ(&mob_data[i], new_z, delta_z);
 
-    if (delta_x != 0 || delta_z != 0 || new_y != old_y) {
+    mob_interp_dy[i] = delta_y;
+    if (delta_x != 0 || delta_z != 0) {
+      uint8_t base_yaw = mobBaseYaw(delta_x, delta_z);
+      int8_t jitter = (int8_t)(((r >> 7) & 15) - 8);
+      mob_interp_yaw[i] = (uint8_t)(base_yaw + jitter);
+    } else if (delta_y != 0 && (prev_dx != 0 || prev_dz != 0)) {
+      mob_interp_yaw[i] = mobBaseYaw(prev_dx, prev_dz);
+    }
+
+    if (delta_x != 0 || delta_z != 0 || delta_y != 0) {
       any_mob_moved = 1;
     }
 
@@ -1956,17 +1977,20 @@ void processMobInterpolation (int64_t now) {
 
       int8_t delta_x = mobDeltaX(&mob_data[i]);
       int8_t delta_z = mobDeltaZ(&mob_data[i]);
-      uint8_t moving = (delta_x != 0) || (delta_z != 0);
+      int8_t delta_y = mob_interp_dy[i];
+      uint8_t moving = (delta_x != 0) || (delta_z != 0) || (delta_y != 0);
 
-      // If only vertical movement occurred, still send the final snap
-      if (!moving && !(alpha == 1.0f && mob_interp_phase == MOB_INTERP_STEPS - 1)) {
+      if (!moving && !(alpha >= 1.0f && mob_interp_phase == MOB_INTERP_STEPS - 1)) {
         continue;
       }
 
       double x = mobInterpAxis(mobBlockX(&mob_data[i]), delta_x, alpha) + 0.5;
       double z = mobInterpAxis(mobBlockZ(&mob_data[i]), delta_z, alpha) + 0.5;
-      double y = (double)mob_data[i].y;
-      uint8_t yaw_byte = mobBaseYaw(delta_x, delta_z);
+      double y = (double)mob_data[i].y - (double)delta_y + (double)delta_y * alpha;
+      uint8_t yaw_byte = mob_interp_yaw[i];
+      if ((delta_x != 0 || delta_z != 0) && yaw_byte == 0) {
+        yaw_byte = mobBaseYaw(delta_x, delta_z);
+      }
       float yaw_deg = yaw_byte * 360.0f / 256.0f;
 
       for (int j = 0; j < MAX_PLAYERS; j ++) {
@@ -1987,7 +2011,7 @@ void processMobInterpolation (int64_t now) {
       }
 
       if (alpha >= 1.0f) {
-        mobClearHorizontalDelta(&mob_data[i]);
+        mob_interp_dy[i] = 0;
       }
     }
 
@@ -1996,6 +2020,7 @@ void processMobInterpolation (int64_t now) {
 
   if (mob_interp_phase >= MOB_INTERP_STEPS) {
     mob_interp_start_time = 0;
+    mob_interp_phase = MOB_INTERP_STEPS;
   }
 
 }
@@ -2017,6 +2042,16 @@ float getMobInterpolationAlpha () {
   float alpha = base + (float)remainder / (float)step_duration / (float)MOB_INTERP_STEPS;
   if (alpha > 1.0f) alpha = 1.0f;
   return alpha;
+}
+
+int8_t getMobPendingVerticalDelta (int mob_index) {
+  if (mob_index < 0 || mob_index >= MAX_MOBS) return 0;
+  return mob_interp_dy[mob_index];
+}
+
+uint8_t getMobPendingYaw (int mob_index) {
+  if (mob_index < 0 || mob_index >= MAX_MOBS) return 0;
+  return mob_interp_yaw[mob_index];
 }
 
 #ifdef ALLOW_CHESTS

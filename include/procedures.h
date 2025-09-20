@@ -51,6 +51,8 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
 void handleServerTick (int64_t time_since_last_tick);
 void processMobInterpolation (int64_t now);
 float getMobInterpolationAlpha ();
+int8_t getMobPendingVerticalDelta (int mob_index);
+uint8_t getMobPendingYaw (int mob_index);
 
 void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, uint8_t count, uint8_t slot);
 

@@ -155,27 +155,23 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           short block_z = mobBlockZ(&mob_data[i]);
           int8_t delta_x = mobDeltaX(&mob_data[i]);
           int8_t delta_z = mobDeltaZ(&mob_data[i]);
+          int8_t delta_y = getMobPendingVerticalDelta(i);
           double prev_x = (double)(block_x - delta_x);
           double prev_z = (double)(block_z - delta_z);
           double spawn_x = prev_x + (double)delta_x * mob_alpha + 0.5;
           double spawn_z = prev_z + (double)delta_z * mob_alpha + 0.5;
-          uint8_t yaw_byte = 0;
-          if (delta_x < 0) {
-            yaw_byte = 64;
-            if (delta_z < 0) yaw_byte += 32;
-            else if (delta_z > 0) yaw_byte -= 32;
-          } else if (delta_x > 0) {
-            yaw_byte = 192;
-            if (delta_z < 0) yaw_byte -= 32;
-            else if (delta_z > 0) yaw_byte += 32;
-          } else if (delta_z < 0) yaw_byte = 128;
-          else if (delta_z > 0) yaw_byte = 0;
+          double prev_y = (double)mob_data[i].y - (double)delta_y;
+          double spawn_y = prev_y + (double)delta_y * mob_alpha;
+          uint8_t yaw_byte = getMobPendingYaw(i);
+          if (yaw_byte == 0 && (delta_x != 0 || delta_z != 0)) {
+            yaw_byte = mobBaseYaw(delta_x, delta_z);
+          }
           // For more info on the arguments here, see the spawnMob function
           sc_spawnEntity(
             client_fd, -2 - i, uuid,
             mob_data[i].type,
             spawn_x,
-            mob_data[i].y,
+            spawn_y,
             spawn_z,
             yaw_byte * 360.0f / 256.0f,
             0
