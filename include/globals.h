@@ -148,6 +148,13 @@
 // If defined, players are able to receive damage from nearby cacti.
 #define ENABLE_CACTUS_DAMAGE
 
+// If defined, enables whitelist commands and functionality to prevent automated server scraping.
+// #define WHITELIST
+
+#ifdef WHITELIST
+  #define MAX_WHITELISTED_PLAYERS 8
+#endif
+
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
 
@@ -184,6 +191,11 @@ extern uint8_t motd_len;
 #ifdef SEND_BRAND
   extern char brand[];
   extern uint8_t brand_len;
+#endif
+
+#ifdef WHITELIST
+  extern uint8_t enforce_whitelist;
+  extern char whitelisted_players[16][MAX_WHITELISTED_PLAYERS];
 #endif
 
 extern uint16_t client_count;

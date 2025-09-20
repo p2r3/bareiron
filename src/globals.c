@@ -45,6 +45,11 @@ uint8_t motd_len = sizeof(motd) - 1;
   uint8_t brand_len = sizeof(brand) - 1;
 #endif
 
+#ifdef WHITELIST
+  uint8_t enforce_whitelist = 0;
+  char whitelisted_players[16][MAX_WHITELISTED_PLAYERS];
+#endif
+
 uint16_t client_count;
 
 BlockChange block_changes[MAX_BLOCK_CHANGES];

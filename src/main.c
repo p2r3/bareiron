@@ -81,6 +81,13 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         uint8_t uuid[16];
         char name[16];
         if (cs_loginStart(client_fd, uuid, name)) break;
+        #ifdef WHITELIST
+        if (enforce_whitelist && !isPlayerWhitelisted(name)) {
+          printf("Disconnecting client %d because they are not on the whitelist\n", client_fd);
+          recv_count = 0;
+          return;
+        }
+        #endif
         if (reservePlayerData(client_fd, uuid, name)) {
           recv_count = 0;
           return;

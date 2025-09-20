@@ -70,6 +70,48 @@ void resetPlayerData (PlayerData *player) {
   }
 }
 
+#ifdef WHITELIST
+// Returns whether the username is on the server whitelist and if so, the index
+uint8_t isPlayerWhitelisted (char *name) {
+  for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i ++){
+    if (strcmp(name, (char *)whitelisted_players[i]) == 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+// Attempts to add a player by name to the server whitelist
+uint8_t addPlayerToWhitelist (char *name) {
+  if (isPlayerWhitelisted(name)) return 1;
+  
+  // check for available spot in the whitelist
+  int next_available_index = -1;
+  for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i ++) {
+    if (whitelisted_players[i][0] == '\0') {
+      next_available_index = i;
+      break;
+    }
+  }
+  if (next_available_index == -1) return 2;
+
+  strcpy(whitelisted_players[next_available_index], name);
+  return 0;
+}
+
+// Attempts to remove a player by name from the server whitelist
+uint8_t removePlayerFromWhitelist (char *name) {
+  if (!isPlayerWhitelisted(name)) return 1;
+  
+  for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i ++) {
+    if (!strcmp(whitelisted_players[i], name)) {
+      whitelisted_players[i][0] = '\0';
+    }
+  }
+  return 0;
+}
+#endif
+
 // Assigns the given data to a player_data entry
 int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
 
@@ -126,16 +168,20 @@ int getPlayerData (int client_fd, PlayerData **output) {
 }
 
 // Returns the player with the given name, or NULL if not found
-PlayerData *getPlayerByName (int start_offset, int end_offset, uint8_t *buffer) {
+PlayerData *getPlayerByName (char *name, uint8_t *buffer) {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
-    int j;
-    for (j = start_offset; j < end_offset && j < 256 && buffer[j] != ' '; j++) {
-      if (player_data[i].name[j - start_offset] != buffer[j]) break;
-    }
-    if ((j == end_offset || buffer[j] == ' ') && j < 256) {
+
+    if (!strcmp(player_data[i].name, name)) {
       return &player_data[i];
     }
+    // int j;
+    // for (j = start_offset; j < end_offset && j < 256 && buffer[j] != ' '; j++) {
+    //   if (player_data[i].name[j - start_offset] != buffer[j]) break;
+    // }
+    // if ((j == end_offset || buffer[j] == ' ') && j < 256) {
+    //   return &player_data[i];
+    // }
   }
   return NULL;
 }
