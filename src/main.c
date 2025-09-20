@@ -146,6 +146,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         uint32_t r = fast_rand();
         memcpy(uuid, &r, 4);
         float mob_alpha = getMobInterpolationAlpha();
+        uint8_t mob_phase = getMobInterpolationPhase();
         // Send allocated living mobs, use ID for second half of UUID
         for (int i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
@@ -160,8 +161,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           double prev_z = (double)(block_z - delta_z);
           double spawn_x = prev_x + (double)delta_x * mob_alpha + 0.5;
           double spawn_z = prev_z + (double)delta_z * mob_alpha + 0.5;
-          double prev_y = (double)mob_data[i].y - (double)delta_y;
-          double spawn_y = prev_y + (double)delta_y * mob_alpha;
+          double spawn_y = sampleMobVerticalPosition(mob_data[i].y, delta_y, mob_phase);
           uint8_t yaw_byte = getMobPendingYaw(i);
           if (yaw_byte == 0 && (delta_x != 0 || delta_z != 0)) {
             yaw_byte = mobBaseYaw(delta_x, delta_z);

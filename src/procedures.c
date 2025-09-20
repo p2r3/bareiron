@@ -22,6 +22,24 @@ static uint8_t mob_interp_phase = MOB_INTERP_STEPS;
 static int8_t mob_interp_dy[MAX_MOBS];
 static uint8_t mob_interp_yaw[MAX_MOBS];
 
+static double mobVerticalProfile (uint8_t current_y, int8_t delta_y, uint8_t phase) {
+  double new_y = (double)current_y;
+  if (delta_y == 0) return new_y;
+
+  double old_y = new_y - (double)delta_y;
+  if (phase >= MOB_INTERP_STEPS) phase = MOB_INTERP_STEPS - 1;
+
+  if (delta_y > 0) {
+    if (phase < MOB_INTERP_STEPS - 2) return old_y;
+    if (phase == MOB_INTERP_STEPS - 2) return new_y + 0.2;
+    return new_y;
+  }
+
+  if (phase < MOB_INTERP_STEPS - 2) return old_y;
+  if (phase == MOB_INTERP_STEPS - 2) return new_y - 0.2;
+  return new_y;
+}
+
 int client_states[MAX_PLAYERS * 2];
 
 void setClientState (int client_fd, int new_state) {
@@ -1986,7 +2004,7 @@ void processMobInterpolation (int64_t now) {
 
       double x = mobInterpAxis(mobBlockX(&mob_data[i]), delta_x, alpha) + 0.5;
       double z = mobInterpAxis(mobBlockZ(&mob_data[i]), delta_z, alpha) + 0.5;
-      double y = (double)mob_data[i].y - (double)delta_y + (double)delta_y * alpha;
+      double y = mobVerticalProfile(mob_data[i].y, delta_y, mob_interp_phase);
       uint8_t yaw_byte = mob_interp_yaw[i];
       if ((delta_x != 0 || delta_z != 0) && yaw_byte == 0) {
         yaw_byte = mobBaseYaw(delta_x, delta_z);
@@ -2054,6 +2072,14 @@ int8_t getMobPendingVerticalDelta (int mob_index) {
 uint8_t getMobPendingYaw (int mob_index) {
   if (mob_index < 0 || mob_index >= MAX_MOBS) return 0;
   return mob_interp_yaw[mob_index];
+}
+
+uint8_t getMobInterpolationPhase () {
+  return mob_interp_phase;
+}
+
+double sampleMobVerticalPosition (uint8_t current_y, int8_t delta_y, uint8_t phase) {
+  return mobVerticalProfile(current_y, delta_y, phase);
 }
 
 #ifdef ALLOW_CHESTS

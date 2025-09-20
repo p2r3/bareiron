@@ -53,6 +53,8 @@ void processMobInterpolation (int64_t now);
 float getMobInterpolationAlpha ();
 int8_t getMobPendingVerticalDelta (int mob_index);
 uint8_t getMobPendingYaw (int mob_index);
+uint8_t getMobInterpolationPhase ();
+double sampleMobVerticalPosition (uint8_t current_y, int8_t delta_y, uint8_t phase);
 
 void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, uint8_t count, uint8_t slot);
 
