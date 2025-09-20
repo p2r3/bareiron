@@ -399,7 +399,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 					spawnMob(/*(biome == W_desert) ? 65 :*/ 145, mob_x, mob_y, mob_z, 20); // Zombie // Husk spawning code is here in case it's going to be implemented later on
 				  	break;
               	case 3:
-					spawnMob(106, mob_x, mob_y, mob_z, 8); // Creeper, aww man
+					spawnMob(30, mob_x, mob_y, mob_z, 8); // Creeper, aww man
 				  	break;
 				default:
 				  printf("Failed to spawn hostile mob %d?\n", mob_choice);
