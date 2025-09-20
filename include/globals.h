@@ -249,6 +249,55 @@ typedef struct {
   uint8_t data;
 } MobData;
 
+// Pack the last horizontal movement delta into the upper bits of the x/z
+// coordinates. This avoids growing MobData while preserving previous
+// positions for interpolation. Valid block range: [-8192, 8191].
+#define MOB_COORD_OFFSET 8192
+#define MOB_COORD_MASK 0x3FFF
+
+static inline short mobBlockCoord (short packed) {
+  return (short)((packed & MOB_COORD_MASK) - MOB_COORD_OFFSET);
+}
+
+static inline int8_t mobDeltaCoord (short packed) {
+  return (int8_t)(((packed >> 14) & 3) - 1);
+}
+
+static inline short mobEncodeCoord (short block, int8_t delta) {
+  uint16_t base = (uint16_t)(block + MOB_COORD_OFFSET) & MOB_COORD_MASK;
+  uint16_t delta_bits = (uint16_t)(delta + 1) & 3;
+  return (short)(base | (delta_bits << 14));
+}
+
+static inline short mobBlockX (const MobData *mob) {
+  return mobBlockCoord(mob->x);
+}
+
+static inline short mobBlockZ (const MobData *mob) {
+  return mobBlockCoord(mob->z);
+}
+
+static inline int8_t mobDeltaX (const MobData *mob) {
+  return mobDeltaCoord(mob->x);
+}
+
+static inline int8_t mobDeltaZ (const MobData *mob) {
+  return mobDeltaCoord(mob->z);
+}
+
+static inline void mobSetX (MobData *mob, short block, int8_t delta) {
+  mob->x = mobEncodeCoord(block, delta);
+}
+
+static inline void mobSetZ (MobData *mob, short block, int8_t delta) {
+  mob->z = mobEncodeCoord(block, delta);
+}
+
+static inline void mobClearHorizontalDelta (MobData *mob) {
+  mob->x = mobEncodeCoord(mobBlockCoord(mob->x), 0);
+  mob->z = mobEncodeCoord(mobBlockCoord(mob->z), 0);
+}
+
 #pragma pack(pop)
 
 union EntityDataValue {

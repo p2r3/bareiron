@@ -16,6 +16,28 @@
 #include "serialize.h"
 #include "procedures.h"
 
+#define MOB_INTERP_STEPS 3
+static int64_t mob_interp_start_time = 0;
+static uint8_t mob_interp_phase = MOB_INTERP_STEPS;
+
+static uint8_t mobBaseYaw (int8_t dx, int8_t dz) {
+  if (dx < 0) {
+    uint8_t yaw = 64;
+    if (dz < 0) return yaw + 32;
+    if (dz > 0) return yaw - 32;
+    return yaw;
+  }
+  if (dx > 0) {
+    uint8_t yaw = 192;
+    if (dz < 0) return yaw - 32;
+    if (dz > 0) return yaw + 32;
+    return yaw;
+  }
+  if (dz < 0) return 128;
+  if (dz > 0) return 0;
+  return 0;
+}
+
 int client_states[MAX_PLAYERS * 2];
 
 void setClientState (int client_fd, int new_state) {
@@ -1380,9 +1402,9 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
     // Assign it the input parameters
     mob_data[i].type = type;
-    mob_data[i].x = x;
+    mobSetX(&mob_data[i], x, 0);
     mob_data[i].y = y;
-    mob_data[i].z = z;
+    mobSetZ(&mob_data[i], z, 0);
     mob_data[i].data = health & 31;
 
     // Forge a UUID from a random number and the mob's index
@@ -1433,7 +1455,7 @@ void interactEntity (int entity_id, int interactor_id) {
       bumpToolDurability(player);
 
       #ifdef ENABLE_PICKUP_ANIMATION
-      playPickupAnimation(player, I_white_wool, mob->x, mob->y, mob->z);
+      playPickupAnimation(player, I_white_wool, mobBlockX(mob), mob->y, mobBlockZ(mob));
       #endif
 
       uint8_t item_count = 1 + (fast_rand() & 1); // 1-2
@@ -1683,6 +1705,13 @@ void handleServerTick (int64_t time_since_last_tick) {
    */
   if (rng_seed == 0) rng_seed = world_seed;
 
+  // Finish any in-flight interpolation before starting a new tick
+  if (mob_interp_phase < MOB_INTERP_STEPS) {
+    processMobInterpolation(get_program_time());
+  }
+
+  uint8_t any_mob_moved = 0;
+
   // Tick mob behavior
   for (int i = 0; i < MAX_MOBS; i ++) {
     if (mob_data[i].type == 0) continue;
@@ -1746,11 +1775,15 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Find the player closest to this mob
     PlayerData* closest_player = &player_data[0];
     uint32_t closest_dist = 2147483647;
+    short old_x = mobBlockX(&mob_data[i]);
+    short old_z = mobBlockZ(&mob_data[i]);
+    uint8_t old_y = mob_data[i].y;
+
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
       uint16_t curr_dist = (
-        abs(mob_data[i].x - player_data[j].x) +
-        abs(mob_data[i].z - player_data[j].z)
+        abs(old_x - player_data[j].x) +
+        abs(old_z - player_data[j].z)
       );
       if (curr_dist < closest_dist) {
         closest_dist = curr_dist;
@@ -1763,23 +1796,19 @@ void handleServerTick (int64_t time_since_last_tick) {
       mob_data[i].type = 0;
       continue;
     }
-
-    short old_x = mob_data[i].x, old_z = mob_data[i].z;
-    uint8_t old_y = mob_data[i].y;
-
     short new_x = old_x, new_z = old_z;
-    uint8_t new_y = old_y, yaw = 0;
+    uint8_t new_y = old_y;
 
     if (passive) { // Passive mob movement handling
 
       // Move by one block on the X or Z axis
       // Yaw is set to face in the direction of motion
       if ((r >> 2) & 1) {
-        if ((r >> 1) & 1) { new_x += 1; yaw = 192; }
-        else { new_x -= 1; yaw = 64; }
+        if ((r >> 1) & 1) new_x += 1;
+        else new_x -= 1;
       } else {
-        if ((r >> 1) & 1) { new_z += 1; yaw = 0; }
-        else { new_z -= 1; yaw = 128; }
+        if ((r >> 1) & 1) new_z += 1;
+        else new_z -= 1;
       }
 
     } else { // Hostile mob movement handling
@@ -1793,17 +1822,17 @@ void handleServerTick (int64_t time_since_last_tick) {
       // Move towards the closest player on 8 axis
       // The condition nesting ensures a correct yaw at 45 degree turns
       if (closest_player->x < old_x) {
-        new_x -= 1; yaw = 64;
-        if (closest_player->z < old_z) { new_z -= 1; yaw += 32; }
-        else if (closest_player->z > old_z) { new_z += 1; yaw -= 32; }
+        new_x -= 1;
+        if (closest_player->z < old_z) new_z -= 1;
+        else if (closest_player->z > old_z) new_z += 1;
       }
       else if (closest_player->x > old_x) {
-        new_x += 1; yaw = 192;
-        if (closest_player->z < old_z) { new_z -= 1; yaw -= 32; }
-        else if (closest_player->z > old_z) { new_z += 1; yaw += 32; }
+        new_x += 1;
+        if (closest_player->z < old_z) new_z -= 1;
+        else if (closest_player->z > old_z) new_z += 1;
       } else {
-        if (closest_player->z < old_z) { new_z -= 1; yaw = 128; }
-        else if (closest_player->z > old_z) { new_z += 1; yaw = 0; }
+        if (closest_player->z < old_z) new_z -= 1;
+        else if (closest_player->z > old_z) new_z += 1;
       }
 
     }
@@ -1860,7 +1889,7 @@ void handleServerTick (int64_t time_since_last_tick) {
     else if (isPassableBlock(getBlockAt(new_x, new_y - 1, new_z))) new_y -= 1;
 
     // Exit early if all movement was cancelled
-    if (new_x == mob_data[i].x && new_z == old_z && new_y == old_y) continue;
+    if (new_x == old_x && new_z == old_z && new_y == old_y) continue;
 
     // Prevent collisions with other mobs
     uint8_t colliding = false;
@@ -1868,8 +1897,8 @@ void handleServerTick (int64_t time_since_last_tick) {
       if (j == i) continue;
       if (mob_data[j].type == 0) continue;
       if (
-        mob_data[j].x == new_x &&
-        mob_data[j].z == new_z &&
+        mobBlockX(&mob_data[j]) == new_x &&
+        mobBlockZ(&mob_data[j]) == new_z &&
         abs((int)mob_data[j].y - (int)new_y) < 2
       ) {
         colliding = true;
@@ -1883,27 +1912,111 @@ void handleServerTick (int64_t time_since_last_tick) {
       (block_above >= B_lava && block_above < B_lava + 4)
     ) hurtEntity(entity_id, -1, D_lava, 8);
 
-    // Store new mob position
-    mob_data[i].x = new_x;
+    int8_t delta_x = (int8_t)(new_x - old_x);
+    int8_t delta_z = (int8_t)(new_z - old_z);
+
+    mobSetX(&mob_data[i], new_x, delta_x);
     mob_data[i].y = new_y;
-    mob_data[i].z = new_z;
+    mobSetZ(&mob_data[i], new_z, delta_z);
 
-    // Vary the yaw angle to look just a little less robotic
-    yaw += ((r >> 7) & 31) - 16;
-
-    // Broadcast relevant entity movement packets
-    for (int j = 0; j < MAX_PLAYERS; j ++) {
-      if (player_data[j].client_fd == -1) continue;
-      sc_teleportEntity (
-        player_data[j].client_fd, entity_id,
-        (double)new_x + 0.5, new_y, (double)new_z + 0.5,
-        yaw * 360 / 256, 0
-      );
-      sc_setHeadRotation(player_data[j].client_fd, entity_id, yaw);
+    if (delta_x != 0 || delta_z != 0 || new_y != old_y) {
+      any_mob_moved = 1;
     }
 
   }
 
+  if (any_mob_moved) {
+    mob_interp_phase = 0;
+    mob_interp_start_time = get_program_time();
+  }
+
+}
+
+static double mobInterpAxis (short target, int8_t delta, float alpha) {
+  double start = (double)target - (double)delta;
+  return start + (double)delta * alpha;
+}
+
+void processMobInterpolation (int64_t now) {
+
+  if (mob_interp_phase >= MOB_INTERP_STEPS) return;
+
+  int64_t step_duration = (int64_t)TIME_BETWEEN_TICKS / MOB_INTERP_STEPS;
+  if (step_duration <= 0) step_duration = 1;
+
+  while (mob_interp_phase < MOB_INTERP_STEPS) {
+    int64_t threshold = (int64_t)(mob_interp_phase + 1) * step_duration;
+    if (now - mob_interp_start_time < threshold) break;
+
+    float alpha = (float)(mob_interp_phase + 1) / (float)MOB_INTERP_STEPS;
+    if (alpha > 1.0f) alpha = 1.0f;
+
+    for (int i = 0; i < MAX_MOBS; i ++) {
+      if (mob_data[i].type == 0) continue;
+
+      int8_t delta_x = mobDeltaX(&mob_data[i]);
+      int8_t delta_z = mobDeltaZ(&mob_data[i]);
+      uint8_t moving = (delta_x != 0) || (delta_z != 0);
+
+      // If only vertical movement occurred, still send the final snap
+      if (!moving && !(alpha == 1.0f && mob_interp_phase == MOB_INTERP_STEPS - 1)) {
+        continue;
+      }
+
+      double x = mobInterpAxis(mobBlockX(&mob_data[i]), delta_x, alpha) + 0.5;
+      double z = mobInterpAxis(mobBlockZ(&mob_data[i]), delta_z, alpha) + 0.5;
+      double y = (double)mob_data[i].y;
+      uint8_t yaw_byte = mobBaseYaw(delta_x, delta_z);
+      float yaw_deg = yaw_byte * 360.0f / 256.0f;
+
+      for (int j = 0; j < MAX_PLAYERS; j ++) {
+        if (player_data[j].client_fd == -1) continue;
+        if (player_data[j].flags & 0x20) continue;
+        uint32_t dist =
+          abs(mobBlockX(&mob_data[i]) - player_data[j].x) +
+          abs(mobBlockZ(&mob_data[i]) - player_data[j].z);
+        if (dist > MOB_DESPAWN_DISTANCE) continue;
+
+        sc_teleportEntity(
+          player_data[j].client_fd,
+          -2 - i,
+          x, y, z,
+          yaw_deg, 0
+        );
+        sc_setHeadRotation(player_data[j].client_fd, -2 - i, yaw_byte);
+      }
+
+      if (alpha >= 1.0f) {
+        mobClearHorizontalDelta(&mob_data[i]);
+      }
+    }
+
+    mob_interp_phase ++;
+  }
+
+  if (mob_interp_phase >= MOB_INTERP_STEPS) {
+    mob_interp_start_time = 0;
+  }
+
+}
+
+float getMobInterpolationAlpha () {
+  if (mob_interp_phase >= MOB_INTERP_STEPS) return 1.0f;
+
+  int64_t step_duration = (int64_t)TIME_BETWEEN_TICKS / MOB_INTERP_STEPS;
+  if (step_duration <= 0) step_duration = 1;
+
+  int64_t elapsed = get_program_time() - mob_interp_start_time;
+  if (elapsed < 0) elapsed = 0;
+
+  float base = (float)mob_interp_phase / (float)MOB_INTERP_STEPS;
+  int64_t remainder = elapsed - (int64_t)mob_interp_phase * step_duration;
+  if (remainder < 0) remainder = 0;
+  if (remainder > step_duration) remainder = step_duration;
+
+  float alpha = base + (float)remainder / (float)step_duration / (float)MOB_INTERP_STEPS;
+  if (alpha > 1.0f) alpha = 1.0f;
+  return alpha;
 }
 
 #ifdef ALLOW_CHESTS

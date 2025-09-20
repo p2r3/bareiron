@@ -145,16 +145,40 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         uint8_t uuid[16];
         uint32_t r = fast_rand();
         memcpy(uuid, &r, 4);
+        float mob_alpha = getMobInterpolationAlpha();
         // Send allocated living mobs, use ID for second half of UUID
         for (int i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
           if ((mob_data[i].data & 31) == 0) continue;
           memcpy(uuid + 4, &i, 4);
+          short block_x = mobBlockX(&mob_data[i]);
+          short block_z = mobBlockZ(&mob_data[i]);
+          int8_t delta_x = mobDeltaX(&mob_data[i]);
+          int8_t delta_z = mobDeltaZ(&mob_data[i]);
+          double prev_x = (double)(block_x - delta_x);
+          double prev_z = (double)(block_z - delta_z);
+          double spawn_x = prev_x + (double)delta_x * mob_alpha + 0.5;
+          double spawn_z = prev_z + (double)delta_z * mob_alpha + 0.5;
+          uint8_t yaw_byte = 0;
+          if (delta_x < 0) {
+            yaw_byte = 64;
+            if (delta_z < 0) yaw_byte += 32;
+            else if (delta_z > 0) yaw_byte -= 32;
+          } else if (delta_x > 0) {
+            yaw_byte = 192;
+            if (delta_z < 0) yaw_byte -= 32;
+            else if (delta_z > 0) yaw_byte += 32;
+          } else if (delta_z < 0) yaw_byte = 128;
+          else if (delta_z > 0) yaw_byte = 0;
           // For more info on the arguments here, see the spawnMob function
           sc_spawnEntity(
             client_fd, -2 - i, uuid,
-            mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,
-            0, 0
+            mob_data[i].type,
+            spawn_x,
+            mob_data[i].y,
+            spawn_z,
+            yaw_byte * 360.0f / 256.0f,
+            0
           );
           broadcastMobMetadata(client_fd, -2 - i);
         }
@@ -625,6 +649,8 @@ int main () {
       handleServerTick(time_since_last_tick);
       last_tick_time = get_program_time();
     }
+
+    processMobInterpolation(get_program_time());
 
     // Handle this individual client
     int client_fd = clients[client_index];
