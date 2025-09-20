@@ -47,9 +47,6 @@ uint8_t motd_len = sizeof(motd) - 1;
 
 uint16_t client_count;
 
-BlockChange block_changes[MAX_BLOCK_CHANGES];
-int block_changes_count = 0;
-
 PlayerData player_data[MAX_PLAYERS];
 int player_data_count = 0;
 

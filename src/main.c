@@ -515,11 +515,6 @@ int main () {
   for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
   printf("\n\n");
 
-  // Initialize block changes entries as unallocated
-  for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
-    block_changes[i].block = 0xFF;
-  }
-
   // Start the disk/flash serializer (if applicable)
   if (initSerializer()) exit(EXIT_FAILURE);
 

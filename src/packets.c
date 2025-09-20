@@ -16,6 +16,7 @@
 #endif
 
 #include "globals.h"
+#include "blocks.h"
 #include "tools.h"
 #include "varnum.h"
 #include "registries.h"
@@ -413,15 +414,16 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
   // Light-emitting blocks are omitted from chunk data so that they can
   // be overlayed here. This seems to be cheaper than sending actual
   // block light data.
-  for (int i = 0; i < block_changes_count; i ++) {
+  for (BlockRef ref = {0}; ref.ri != -1; ref = nextBlockChange(ref)) {
+    BlockChange change = derefBlockChange(ref);
     #ifdef ALLOW_CHESTS
-      if (block_changes[i].block != B_torch && block_changes[i].block != B_chest) continue;
+      if (change.block != B_torch && change.block != B_chest) continue;
     #else
-      if (block_changes[i].block != B_torch) continue;
+      if (change.block != B_torch) continue;
     #endif
-    if (block_changes[i].x < x || block_changes[i].x >= x + 16) continue;
-    if (block_changes[i].z < z || block_changes[i].z >= z + 16) continue;
-    sc_blockUpdate(client_fd, block_changes[i].x, block_changes[i].y, block_changes[i].z, block_changes[i].block);
+    if (change.x < x || change.x >= x + 16) continue;
+    if (change.z < z || change.z >= z + 16) continue;
+    sc_blockUpdate(client_fd, change.x, change.y, change.z, change.block);
   }
 
   return 0;

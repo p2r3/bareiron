@@ -70,7 +70,9 @@
 // Must be at least 1, otherwise chunks will be sent on each position update
 #define VISITED_HISTORY 4
 
-// How many player-made block changes to allow
+// The minimum number of player-made block changes to allow
+// Note that the number of changes will be higher than this due to opportunistic compression
+// but in the worse case scenario this will be the limit
 // Determines the fixed amount of memory allocated to blocks
 #define MAX_BLOCK_CHANGES 20000
 
@@ -132,7 +134,11 @@
 // Chests take up 15 block change slots each, require additional checks,
 // and use some terrible memory hacks to function. On some platforms, this
 // could cause bad performance or even crashes during gameplay.
-#define ALLOW_CHESTS
+// #define ALLOW_CHESTS
+
+#ifdef ALLOW_CHESTS
+  #error "Chests are not yet supported with RLE"
+#endif
 
 // If defined, enables flight for all players. As a side-effect, allows
 // players to sprint when starving.
@@ -162,6 +168,9 @@
 // Doesn't implement authentication, hence disabled by default.
 // #define DEV_ENABLE_BEEF_DUMPS
 
+// Log the block changes storage usage on every allocation
+#define DEV_LOG_BLOCK_STORAGE_STATS
+
 #define STATE_NONE 0
 #define STATE_STATUS 1
 #define STATE_LOGIN 2
@@ -187,13 +196,6 @@ extern uint8_t motd_len;
 #endif
 
 extern uint16_t client_count;
-
-typedef struct {
-  short x;
-  short z;
-  uint8_t y;
-  uint8_t block;
-} BlockChange;
 
 #pragma pack(push, 1)
 
@@ -263,9 +265,6 @@ typedef struct {
   int type;
   union EntityDataValue value;
 } EntityData;
-
-extern BlockChange block_changes[MAX_BLOCK_CHANGES];
-extern int block_changes_count;
 
 extern PlayerData player_data[MAX_PLAYERS];
 extern int player_data_count;
