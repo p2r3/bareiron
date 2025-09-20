@@ -2011,7 +2011,9 @@ void processMobInterpolation (int64_t now) {
       }
 
       if (alpha >= 1.0f) {
+        mobClearHorizontalDelta(&mob_data[i]);
         mob_interp_dy[i] = 0;
+        mob_interp_yaw[i] = 0;
       }
     }
 

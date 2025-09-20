@@ -293,6 +293,11 @@ static inline void mobSetZ (MobData *mob, short block, int8_t delta) {
   mob->z = mobEncodeCoord(block, delta);
 }
 
+static inline void mobClearHorizontalDelta (MobData *mob) {
+  mob->x = mobEncodeCoord(mobBlockCoord(mob->x), 0);
+  mob->z = mobEncodeCoord(mobBlockCoord(mob->z), 0);
+}
+
 static inline uint8_t mobBaseYaw (int8_t dx, int8_t dz) {
   if (dx < 0) {
     uint8_t yaw = 64;
