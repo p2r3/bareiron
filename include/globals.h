@@ -117,6 +117,11 @@
 // tickrates, consider disabling SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT too.
 #define BROADCAST_ALL_MOVEMENT
 
+// Optional: interpolate mob movement between ticks by sending one midpoint
+// update per step. Disabled by default to avoid extra memory/bandwidth on
+// very constrained targets.
+// #define ENABLE_OPTIN_MOB_INTERPOLATION
+
 // If defined, scales the frequency at which player movement updates are
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
@@ -291,11 +296,6 @@ static inline void mobSetX (MobData *mob, short block, int8_t delta) {
 
 static inline void mobSetZ (MobData *mob, short block, int8_t delta) {
   mob->z = mobEncodeCoord(block, delta);
-}
-
-static inline void mobClearHorizontalDelta (MobData *mob) {
-  mob->x = mobEncodeCoord(mobBlockCoord(mob->x), 0);
-  mob->z = mobEncodeCoord(mobBlockCoord(mob->z), 0);
 }
 
 static inline uint8_t mobBaseYaw (int8_t dx, int8_t dz) {

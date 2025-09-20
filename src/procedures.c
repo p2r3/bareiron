@@ -16,29 +16,18 @@
 #include "serialize.h"
 #include "procedures.h"
 
-#define MOB_INTERP_STEPS 6
-static int64_t mob_interp_start_time = 0;
-static uint8_t mob_interp_phase = MOB_INTERP_STEPS;
-static int8_t mob_interp_dy[MAX_MOBS];
-static uint8_t mob_interp_yaw[MAX_MOBS];
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
+typedef struct {
+  short start_x;
+  short start_z;
+  uint8_t start_y;
+  uint8_t active;
+  uint8_t sent_midpoint;
+} MobInterpState;
 
-static double mobVerticalProfile (uint8_t current_y, int8_t delta_y, uint8_t phase) {
-  double new_y = (double)current_y;
-  if (delta_y == 0) return new_y;
-
-  double old_y = new_y - (double)delta_y;
-  if (phase >= MOB_INTERP_STEPS) phase = MOB_INTERP_STEPS - 1;
-
-  if (delta_y > 0) {
-    if (phase < MOB_INTERP_STEPS - 2) return old_y;
-    if (phase == MOB_INTERP_STEPS - 2) return new_y + 0.2;
-    return new_y;
-  }
-
-  if (phase < MOB_INTERP_STEPS - 2) return old_y;
-  if (phase == MOB_INTERP_STEPS - 2) return new_y - 0.2;
-  return new_y;
-}
+static MobInterpState mob_interp_state[MAX_MOBS];
+static int64_t mob_interp_tick_start = 0;
+#endif
 
 int client_states[MAX_PLAYERS * 2];
 
@@ -1408,8 +1397,10 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
     mob_data[i].y = y;
     mobSetZ(&mob_data[i], z, 0);
     mob_data[i].data = health & 31;
-    mob_interp_dy[i] = 0;
-    mob_interp_yaw[i] = 0;
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
+    mob_interp_state[i].active = 0;
+    mob_interp_state[i].sent_midpoint = 0;
+#endif
 
     // Forge a UUID from a random number and the mob's index
     uint8_t uuid[16];
@@ -1709,12 +1700,13 @@ void handleServerTick (int64_t time_since_last_tick) {
    */
   if (rng_seed == 0) rng_seed = world_seed;
 
-  // Finish any in-flight interpolation before starting a new tick
-  if (mob_interp_phase < MOB_INTERP_STEPS) {
-    processMobInterpolation(get_program_time());
-  }
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
+  processMobInterpolation(get_program_time());
+#endif
 
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
   uint8_t any_mob_moved = 0;
+#endif
 
   // Tick mob behavior
   for (int i = 0; i < MAX_MOBS; i ++) {
@@ -1728,6 +1720,9 @@ void handleServerTick (int64_t time_since_last_tick) {
         continue;
       }
       mob_data[i].type = 0;
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
+      mob_interp_state[i].active = 0;
+#endif
       for (int j = 0; j < MAX_PLAYERS; j ++) {
         if (player_data[j].client_fd == -1) continue;
         // Spawn death smoke particles
@@ -1800,6 +1795,9 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Despawn mobs past a certain distance from nearest player
     if (closest_dist > MOB_DESPAWN_DISTANCE) {
       mob_data[i].type = 0;
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
+      mob_interp_state[i].active = 0;
+#endif
       continue;
     }
     short new_x = old_x, new_z = old_z;
@@ -1949,138 +1947,107 @@ attempt_move:
     mob_data[i].y = new_y;
     mobSetZ(&mob_data[i], new_z, delta_z);
 
-    mob_interp_dy[i] = delta_y;
-    if (delta_x != 0 || delta_z != 0) {
-      uint8_t base_yaw = mobBaseYaw(delta_x, delta_z);
-      int8_t jitter = (int8_t)(((r >> 7) & 15) - 8);
-      mob_interp_yaw[i] = (uint8_t)(base_yaw + jitter);
-    } else if (delta_y != 0 && (prev_dx != 0 || prev_dz != 0)) {
-      mob_interp_yaw[i] = mobBaseYaw(prev_dx, prev_dz);
-    }
-
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
     if (delta_x != 0 || delta_z != 0 || delta_y != 0) {
+      mob_interp_state[i].start_x = old_x;
+      mob_interp_state[i].start_y = old_y;
+      mob_interp_state[i].start_z = old_z;
+      mob_interp_state[i].active = 1;
+      mob_interp_state[i].sent_midpoint = 0;
       any_mob_moved = 1;
+    } else {
+      mob_interp_state[i].active = 0;
+    }
+#else
+    (void)delta_y;
+#endif
+
+    uint8_t yaw = 0;
+    if (delta_x != 0 || delta_z != 0) {
+      yaw = mobBaseYaw(delta_x, delta_z);
+    }
+
+    for (int j = 0; j < MAX_PLAYERS; j ++) {
+      if (player_data[j].client_fd == -1) continue;
+      sc_teleportEntity(
+        player_data[j].client_fd,
+        entity_id,
+        (double)new_x + 0.5,
+        new_y,
+        (double)new_z + 0.5,
+        yaw * 360.0f / 256.0f,
+        0
+      );
+      if (yaw) sc_setHeadRotation(player_data[j].client_fd, entity_id, yaw);
     }
 
   }
 
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
   if (any_mob_moved) {
-    mob_interp_phase = 0;
-    mob_interp_start_time = get_program_time();
+    mob_interp_tick_start = get_program_time();
+  } else {
+    mob_interp_tick_start = 0;
   }
+#endif
 
 }
-
-static double mobInterpAxis (short target, int8_t delta, float alpha) {
-  double start = (double)target - (double)delta;
-  return start + (double)delta * alpha;
-}
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
 
 void processMobInterpolation (int64_t now) {
 
-  if (mob_interp_phase >= MOB_INTERP_STEPS) return;
+  if (mob_interp_tick_start == 0) return;
 
-  int64_t step_duration = (int64_t)TIME_BETWEEN_TICKS / MOB_INTERP_STEPS;
-  if (step_duration <= 0) step_duration = 1;
+  int64_t elapsed = now - mob_interp_tick_start;
+  if (elapsed <= 0) return;
 
-  while (mob_interp_phase < MOB_INTERP_STEPS) {
-    int64_t threshold = (int64_t)(mob_interp_phase + 1) * step_duration;
-    if (now - mob_interp_start_time < threshold) break;
+  if (elapsed >= TIME_BETWEEN_TICKS) {
+    for (int i = 0; i < MAX_MOBS; i ++) mob_interp_state[i].active = 0;
+    mob_interp_tick_start = 0;
+    return;
+  }
 
-    float alpha = (float)(mob_interp_phase + 1) / (float)MOB_INTERP_STEPS;
-    if (alpha > 1.0f) alpha = 1.0f;
+  float alpha = (float)elapsed / (float)TIME_BETWEEN_TICKS;
+  if (alpha < 0.5f) return;
 
-    for (int i = 0; i < MAX_MOBS; i ++) {
-      if (mob_data[i].type == 0) continue;
+  for (int i = 0; i < MAX_MOBS; i ++) {
+    MobInterpState *state = &mob_interp_state[i];
+    if (!state->active) continue;
+    if (state->sent_midpoint) continue;
 
-      int8_t delta_x = mobDeltaX(&mob_data[i]);
-      int8_t delta_z = mobDeltaZ(&mob_data[i]);
-      int8_t delta_y = mob_interp_dy[i];
-      uint8_t moving = (delta_x != 0) || (delta_z != 0) || (delta_y != 0);
+    short end_x = mobBlockX(&mob_data[i]);
+    short end_z = mobBlockZ(&mob_data[i]);
+    uint8_t end_y = mob_data[i].y;
 
-      if (!moving && !(alpha >= 1.0f && mob_interp_phase == MOB_INTERP_STEPS - 1)) {
-        continue;
-      }
+    double interp_x = (double)state->start_x + (double)(end_x - state->start_x) * 0.5 + 0.5;
+    double interp_z = (double)state->start_z + (double)(end_z - state->start_z) * 0.5 + 0.5;
+    double interp_y = (double)state->start_y + (double)(end_y - state->start_y) * 0.5;
 
-      double x = mobInterpAxis(mobBlockX(&mob_data[i]), delta_x, alpha) + 0.5;
-      double z = mobInterpAxis(mobBlockZ(&mob_data[i]), delta_z, alpha) + 0.5;
-      double y = mobVerticalProfile(mob_data[i].y, delta_y, mob_interp_phase);
-      uint8_t yaw_byte = mob_interp_yaw[i];
-      if ((delta_x != 0 || delta_z != 0) && yaw_byte == 0) {
-        yaw_byte = mobBaseYaw(delta_x, delta_z);
-      }
-      float yaw_deg = yaw_byte * 360.0f / 256.0f;
+    int dx = end_x - state->start_x;
+    int dz = end_z - state->start_z;
+    uint8_t yaw = (dx != 0 || dz != 0) ? mobBaseYaw(dx, dz) : 0;
 
-      for (int j = 0; j < MAX_PLAYERS; j ++) {
-        if (player_data[j].client_fd == -1) continue;
-        if (player_data[j].flags & 0x20) continue;
-        uint32_t dist =
-          abs(mobBlockX(&mob_data[i]) - player_data[j].x) +
-          abs(mobBlockZ(&mob_data[i]) - player_data[j].z);
-        if (dist > MOB_DESPAWN_DISTANCE) continue;
-
-        sc_teleportEntity(
-          player_data[j].client_fd,
-          -2 - i,
-          x, y, z,
-          yaw_deg, 0
-        );
-        sc_setHeadRotation(player_data[j].client_fd, -2 - i, yaw_byte);
-      }
-
-      if (alpha >= 1.0f) {
-        mobClearHorizontalDelta(&mob_data[i]);
-        mob_interp_dy[i] = 0;
-        mob_interp_yaw[i] = 0;
-      }
+    for (int j = 0; j < MAX_PLAYERS; j ++) {
+      if (player_data[j].client_fd == -1) continue;
+      if (player_data[j].flags & 0x20) continue;
+      sc_teleportEntity(
+        player_data[j].client_fd,
+        -2 - i,
+        interp_x,
+        interp_y,
+        interp_z,
+        yaw * 360.0f / 256.0f,
+        0
+      );
+      if (yaw) sc_setHeadRotation(player_data[j].client_fd, -2 - i, yaw);
     }
 
-    mob_interp_phase ++;
-  }
-
-  if (mob_interp_phase >= MOB_INTERP_STEPS) {
-    mob_interp_start_time = 0;
-    mob_interp_phase = MOB_INTERP_STEPS;
+    state->sent_midpoint = 1;
   }
 
 }
 
-float getMobInterpolationAlpha () {
-  if (mob_interp_phase >= MOB_INTERP_STEPS) return 1.0f;
-
-  int64_t step_duration = (int64_t)TIME_BETWEEN_TICKS / MOB_INTERP_STEPS;
-  if (step_duration <= 0) step_duration = 1;
-
-  int64_t elapsed = get_program_time() - mob_interp_start_time;
-  if (elapsed < 0) elapsed = 0;
-
-  float base = (float)mob_interp_phase / (float)MOB_INTERP_STEPS;
-  int64_t remainder = elapsed - (int64_t)mob_interp_phase * step_duration;
-  if (remainder < 0) remainder = 0;
-  if (remainder > step_duration) remainder = step_duration;
-
-  float alpha = base + (float)remainder / (float)step_duration / (float)MOB_INTERP_STEPS;
-  if (alpha > 1.0f) alpha = 1.0f;
-  return alpha;
-}
-
-int8_t getMobPendingVerticalDelta (int mob_index) {
-  if (mob_index < 0 || mob_index >= MAX_MOBS) return 0;
-  return mob_interp_dy[mob_index];
-}
-
-uint8_t getMobPendingYaw (int mob_index) {
-  if (mob_index < 0 || mob_index >= MAX_MOBS) return 0;
-  return mob_interp_yaw[mob_index];
-}
-
-uint8_t getMobInterpolationPhase () {
-  return mob_interp_phase;
-}
-
-double sampleMobVerticalPosition (uint8_t current_y, int8_t delta_y, uint8_t phase) {
-  return mobVerticalProfile(current_y, delta_y, phase);
-}
+#endif
 
 #ifdef ALLOW_CHESTS
 // Broadcasts a chest slot update to all clients who have that chest open,

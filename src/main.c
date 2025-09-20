@@ -145,8 +145,6 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         uint8_t uuid[16];
         uint32_t r = fast_rand();
         memcpy(uuid, &r, 4);
-        float mob_alpha = getMobInterpolationAlpha();
-        uint8_t mob_phase = getMobInterpolationPhase();
         // Send allocated living mobs, use ID for second half of UUID
         for (int i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
@@ -154,26 +152,16 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           memcpy(uuid + 4, &i, 4);
           short block_x = mobBlockX(&mob_data[i]);
           short block_z = mobBlockZ(&mob_data[i]);
-          int8_t delta_x = mobDeltaX(&mob_data[i]);
-          int8_t delta_z = mobDeltaZ(&mob_data[i]);
-          int8_t delta_y = getMobPendingVerticalDelta(i);
-          double prev_x = (double)(block_x - delta_x);
-          double prev_z = (double)(block_z - delta_z);
-          double spawn_x = prev_x + (double)delta_x * mob_alpha + 0.5;
-          double spawn_z = prev_z + (double)delta_z * mob_alpha + 0.5;
-          double spawn_y = sampleMobVerticalPosition(mob_data[i].y, delta_y, mob_phase);
-          uint8_t yaw_byte = getMobPendingYaw(i);
-          if (yaw_byte == 0 && (delta_x != 0 || delta_z != 0)) {
-            yaw_byte = mobBaseYaw(delta_x, delta_z);
-          }
+          double spawn_x = (double)block_x + 0.5;
+          double spawn_z = (double)block_z + 0.5;
           // For more info on the arguments here, see the spawnMob function
           sc_spawnEntity(
             client_fd, -2 - i, uuid,
             mob_data[i].type,
             spawn_x,
-            spawn_y,
+            mob_data[i].y,
             spawn_z,
-            yaw_byte * 360.0f / 256.0f,
+            0,
             0
           );
           broadcastMobMetadata(client_fd, -2 - i);
