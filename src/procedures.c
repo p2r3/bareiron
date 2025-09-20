@@ -1372,6 +1372,20 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
 
 }
 
+void explode (short x, short y, short z, short radius) {
+  for (short xI = x - radius; xI <= x + radius; xI++) {
+    for (short yI = y - radius; yI <= y + radius; yI++) {
+      for (short zI = z - radius; zI <= z + radius; zI++) {
+        float randRad = ((float)radius * ((float)fast_rand(x + y + z) / 0x7FFF / 4 + 0.75));
+
+        if (xI*xI + yI*yI + zI*zI >= randRad*randRad) {
+          makeBlockChange(xI, yI, zI, B_air);
+        }
+      }
+    }
+  }
+}
+
 void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
   for (int i = 0; i < MAX_MOBS; i ++) {
@@ -1788,15 +1802,19 @@ void handleServerTick (int64_t time_since_last_tick) {
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
         if (mob_data[i].type == 30) { // If mob is a creeper explode instead of deal meelee damage
           sc_entityEvent(player_data[j].client_fd, entity_id, 59);
-          if (panic >= 2) { // TODO: Maybe make panic timer max val from a constant? Like from TICKS_PER_SECOND
+
+          if (panic >= 2) {
             sc_entityEvent(player_data[j].client_fd, entity_id, 21);
-            // Make an explosion function
+            explode(mob_data[i].x, mob_data[i].y, mob_data[i].z, 3);
           }
 
           // Increase timer
+          if (server_ticks % (uint32_t)TICKS_PER_SECOND == 0) {
+            mob_data[i].data += (1 << 6);
+          }
         } else {
           hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
-        };
+        }
         continue;
       }
 
