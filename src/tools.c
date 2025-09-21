@@ -289,8 +289,15 @@ uint64_t splitmix64 (uint64_t state) {
 // the start of the program*, and NOT wall clock time. To ensure
 // compatibility, this should only be used to measure time intervals.
 int64_t get_program_time () {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
+  #ifdef _WIN32
+    LARGE_INTEGER frequency, counter;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&counter);
+    return (int64_t)(counter.QuadPart * 1000000LL / frequency.QuadPart);
+  #else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
+  #endif
 }
 #endif
