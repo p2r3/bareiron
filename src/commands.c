@@ -9,7 +9,7 @@ void handleCommand (PlayerData *player, int message_len) {
     goto cleanup;
   }
 
-  char* command = strtok(recv_buffer, " ");
+  char* command = strtok((char *)recv_buffer, " ");
   #ifdef WHITELIST
   if (!strcmp(command, "!whitelist")) {
     handleWhitelistCommand(player);
@@ -92,13 +92,13 @@ void handleWhitelistCommand (PlayerData *player) {
     }
     return;
   } else if (!strcmp(first_arg, "list")) {
-    snprintf(recv_buffer, sizeof(recv_buffer), "§7The currently whitelisted players are:");
+    snprintf((char *)recv_buffer, sizeof(recv_buffer), "§7The currently whitelisted players are:");
     recv_buffer[41] = ' ';
     int length = 42;
     for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i++) {
       if(whitelisted_players[i][0] == '\0') continue;
 
-      snprintf(recv_buffer + length, sizeof(recv_buffer) - length, "%s, ", whitelisted_players[i]);
+      snprintf((char *)recv_buffer + length, sizeof(recv_buffer) - length, "%s, ", whitelisted_players[i]);
       length += strlen(whitelisted_players[i]) + 2;
     }
     if(length == 42){
@@ -106,7 +106,7 @@ void handleWhitelistCommand (PlayerData *player) {
         return;
     }
     // Subtract 2 from the length to remove the trailing comma and space
-    sc_systemChat(player->client_fd, recv_buffer, length - 2);
+    sc_systemChat(player->client_fd, (char *)recv_buffer, length - 2);
     return;
   }
 usage:
