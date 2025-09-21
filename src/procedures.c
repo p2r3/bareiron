@@ -1801,10 +1801,10 @@ void handleServerTick (int64_t time_since_last_tick) {
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
         if (mob_data[i].type == 30) { // If mob is a creeper explode instead of deal meelee damage
-          sc_entityEvent(player_data[j].client_fd, entity_id, 59);
+          sc_entityEvent(closest_player->client_fd, entity_id, 59);
 
           if (panic >= 2) {
-            sc_entityEvent(player_data[j].client_fd, entity_id, 21);
+            sc_entityEvent(closest_player->client_fd, entity_id, 21);
             explode(mob_data[i].x, mob_data[i].y, mob_data[i].z, 3);
             hurtEntity(closest_player->client_fd, entity_id, D_generic, 255); // TODO: Make the explosion function deal damage
           }
