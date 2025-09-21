@@ -31,7 +31,7 @@ cleanup:
 }
 
 // Pulls a single space-delimited argument from the chat buffer
-char *getArgument () {
+char *getNextArgument () {
   return strtok(NULL, " ");
 }
 
@@ -42,7 +42,7 @@ char *getRemainingArguments () {
 
 #ifdef WHITELIST
 void handleWhitelistCommand (PlayerData *player) {
-  char *first_arg = getArgument();
+  char *first_arg = getNextArgument();
 
   if (first_arg == NULL) {
     goto usage;
@@ -57,7 +57,7 @@ void handleWhitelistCommand (PlayerData *player) {
     enforce_whitelist = 0;
     return;
   } else if (!strcmp(first_arg, "add")) {
-    char* player_arg = getArgument();
+    char* player_arg = getNextArgument();
     if (player_arg == NULL) {
       goto usage;
     }
@@ -76,7 +76,7 @@ void handleWhitelistCommand (PlayerData *player) {
     }
     return;
   } else if (!strcmp(first_arg, "remove")) {
-    char* player_arg = getArgument();
+    char* player_arg = getNextArgument();
     if (player_arg == NULL) {
       goto usage;
     }
@@ -115,7 +115,7 @@ usage:
 #endif
 
 void handleMessageCommand (PlayerData* player) {
-  char* target_name = getArgument();
+  char* target_name = getNextArgument();
 
   // Send usage guide if arguments are missing
   if (target_name == NULL) goto usage;

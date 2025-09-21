@@ -5,7 +5,7 @@
 #include "packets.h"
 #include "procedures.h"
 
-char *getArgument ();
+char *getNextArgument ();
 char *getRemainingArguments ();
 void handleCommand (PlayerData *sender, int message_len);
 #ifdef WHITELIST
