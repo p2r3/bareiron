@@ -175,13 +175,6 @@ PlayerData *getPlayerByName (char *name, uint8_t *buffer) {
     if (!strcmp(player_data[i].name, name)) {
       return &player_data[i];
     }
-    // int j;
-    // for (j = start_offset; j < end_offset && j < 256 && buffer[j] != ' '; j++) {
-    //   if (player_data[i].name[j - start_offset] != buffer[j]) break;
-    // }
-    // if ((j == end_offset || buffer[j] == ' ') && j < 256) {
-    //   return &player_data[i];
-    // }
   }
   return NULL;
 }
