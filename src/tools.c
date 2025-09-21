@@ -53,7 +53,11 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   if (require_first) {
     ssize_t r = recv(client_fd, p, 1, MSG_PEEK);
     if (r <= 0) {
-      if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+	    #ifdef _WIN32
+        if (r < 0 && (WSAGetLastError() == WSAEWOULDBLOCK)) {
+      #else
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      #endif
         return 0; // no first byte available yet
       }
       return -1; // error or connection closed
@@ -64,7 +68,11 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   while (total < n) {
     ssize_t r = recv(client_fd, p + total, n - total, 0);
     if (r < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    #ifdef _WIN32
+        if (WSAGetLastError() == WSAEWOULDBLOCK) {
+      #else
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      #endif
         // handle network timeout
         if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
           disconnectClient(&client_fd, -1);
@@ -111,7 +119,11 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
       continue;
     }
     if (n == 0) { // connection was closed, treat this as an error
-      errno = ECONNRESET;
+      #ifdef _WIN32
+        errno = WSAECONNRESET;
+      #else
+        errno = ECONNRESET;
+      #endif
       return -1;
     }
     // not yet ready to transmit, try again
