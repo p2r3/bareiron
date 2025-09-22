@@ -1374,6 +1374,20 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
 
 }
 
+void explode (short x, short y, short z, short radius) {
+  for (short xI = x - radius; xI <= x + radius; xI++) {
+    for (short yI = y - radius; yI <= y + radius; yI++) {
+      for (short zI = z - radius; zI <= z + radius; zI++) {
+        float randRad = ((float)radius * ((float)fast_rand(x + y + z) / 0x7FFFFFFF / 4 + 0.75));
+
+        if ((float)((xI- x) * (xI - x) + (yI - y) * (yI - y) + (zI - z) * (zI - z)) <= randRad*randRad) {
+          makeBlockChange(xI, yI, zI, B_air);
+        }
+      }
+    }
+  }
+}
+
 void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
   for (int i = 0; i < MAX_MOBS; i ++) {
@@ -1788,7 +1802,23 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
-        hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        if (mob_data[i].type == 30) { // If mob is a creeper explode instead of deal meelee damage
+          //sc_entityEvent(closest_player->client_fd, entity_id, 59);
+
+          printf("Attempting to attack player with %d panic value...", panic);
+          if (panic >= 2) {
+            //sc_entityEvent(closest_player->client_fd, entity_id, 21);
+            explode(mob_data[i].x, mob_data[i].y, mob_data[i].z, 3);
+            hurtEntity(closest_player->client_fd, entity_id, D_generic, 255); // TODO: Make the explosion function deal damage
+          }
+
+          // Increase timer
+          if (server_ticks % (uint32_t)TICKS_PER_SECOND == 0) {
+            mob_data[i].data += (1 << 6);
+          }
+        } else {
+          hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        }
         continue;
       }
 
