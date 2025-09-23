@@ -47,7 +47,7 @@ uint8_t motd_len = sizeof(motd) - 1;
 
 #if MAX_WHITELISTED_PLAYERS > 0
   uint8_t enforce_whitelist = 0;
-  char whitelisted_players[16][MAX_WHITELISTED_PLAYERS];
+  char whitelisted_players[MAX_WHITELISTED_PLAYERS][16];
 #endif
 
 uint16_t client_count;

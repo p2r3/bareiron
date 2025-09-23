@@ -191,7 +191,7 @@ extern uint8_t motd_len;
 
 #if MAX_WHITELISTED_PLAYERS > 0
   extern uint8_t enforce_whitelist;
-  extern char whitelisted_players[16][MAX_WHITELISTED_PLAYERS];
+  extern char whitelisted_players[MAX_WHITELISTED_PLAYERS][16];
 #endif
 
 extern uint16_t client_count;
