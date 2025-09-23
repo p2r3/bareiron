@@ -13,7 +13,7 @@ int getClientIndex (int client_fd);
 
 void resetPlayerData (PlayerData *player);
 
-#ifdef WHITELIST
+#if MAX_WHITELISTED_PLAYERS > 0
   uint8_t isPlayerWhitelisted (char *name);
   uint8_t addPlayerToWhitelist (char *name);
   uint8_t removePlayerFromWhitelist (char *name);

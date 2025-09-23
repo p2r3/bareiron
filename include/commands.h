@@ -8,7 +8,7 @@
 char *getNextArgument ();
 char *getRemainingArguments ();
 void handleCommand (PlayerData *sender, int message_len);
-#ifdef WHITELIST
+#if MAX_WHITELISTED_PLAYERS > 0
   void handleWhitelistCommand (PlayerData *sender);
 #endif
 void handleMessageCommand (PlayerData *sender);

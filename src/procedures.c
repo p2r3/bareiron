@@ -70,8 +70,8 @@ void resetPlayerData (PlayerData *player) {
   }
 }
 
-#ifdef WHITELIST
-// Returns whether the username is on the server whitelist and if so, the index
+#if MAX_WHITELISTED_PLAYERS > 0
+// Returns whether the username is on the server whitelist
 uint8_t isPlayerWhitelisted (char *name) {
   for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i ++){
     if (strcmp(name, (char *)whitelisted_players[i]) == 0) {

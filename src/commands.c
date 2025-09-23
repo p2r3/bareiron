@@ -5,29 +5,18 @@
 #include "commands.h"
 
 void handleCommand (PlayerData *player, int message_len) {
-  if (message_len <= 1) {
-    goto cleanup;
-  }
-
   char* command = strtok((char *)recv_buffer, " ");
-  #ifdef WHITELIST
-  if (!strcmp(command, "!whitelist")) {
-    handleWhitelistCommand(player);
-    return;
-  }
-  #endif
-  if (!strcmp((char *) command, "!msg")) {
-    handleMessageCommand(player);
-    return;
-  }
-  if (!strcmp((char *) command, "!help")) {
+  if (!strcmp(command, "!help")) {
     handleHelpCommand(player);
-    return;
+  } else if (!strcmp(command, "!msg")) {
+    handleMessageCommand(player);
+  #if MAX_WHITELISTED_PLAYERS > 0
+  } else if (!strcmp(command, "!whitelist")) {
+    handleWhitelistCommand(player);
+  #endif
+  } else {
+    sc_systemChat(player->client_fd, "§7Unknown command. Type !help for help.", 40);
   }
-
-cleanup:
-  // Handle fall-through case
-  sc_systemChat(player->client_fd, "§7Unknown command. Type !help for help.", 40);
 }
 
 // Pulls a single space-delimited argument from the chat buffer
@@ -40,7 +29,7 @@ char *getRemainingArguments () {
   return strtok(NULL, "");
 }
 
-#ifdef WHITELIST
+#if MAX_WHITELISTED_PLAYERS > 0
 void handleWhitelistCommand (PlayerData *player) {
   char *first_arg = getNextArgument();
 
@@ -67,9 +56,9 @@ void handleWhitelistCommand (PlayerData *player) {
         return;
     }
     int result = addPlayerToWhitelist(player_arg);
-    if(result == 0) {
+    if (result == 0) {
       sc_systemChat(player->client_fd, "§7Successfully added player to the whitelist", 45);
-    } else if(result == 1) {
+    } else if (result == 1) {
       sc_systemChat(player->client_fd, "§cError: Player is already on the whitelist", 44);
     } else {
       sc_systemChat(player->client_fd, "§cError: The whitelist is full, remove other players first then try again", 74);
@@ -85,7 +74,7 @@ void handleWhitelistCommand (PlayerData *player) {
         sc_systemChat(player->client_fd, "§cError: input username is invalid", 35);
         return;
     }
-    if(removePlayerFromWhitelist(player_arg) == 0) {
+    if (removePlayerFromWhitelist(player_arg) == 0) {
       sc_systemChat(player->client_fd, "§7Successfully removed player from the whitelist", 49);
     } else {
       sc_systemChat(player->client_fd, "§cError: Player is not on the whitelist", 40);
@@ -95,13 +84,13 @@ void handleWhitelistCommand (PlayerData *player) {
     snprintf((char *)recv_buffer, sizeof(recv_buffer), "§7The currently whitelisted players are:");
     recv_buffer[41] = ' ';
     int length = 42;
-    for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i++) {
-      if(whitelisted_players[i][0] == '\0') continue;
+    for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i ++) {
+      if (whitelisted_players[i][0] == '\0') continue;
 
       snprintf((char *)recv_buffer + length, sizeof(recv_buffer) - length, "%s, ", whitelisted_players[i]);
       length += strlen(whitelisted_players[i]) + 2;
     }
-    if(length == 42){
+    if (length == 42){
         sc_systemChat(player->client_fd, "§7There are currently no whitelisted players", 45);
         return;
     }
@@ -162,7 +151,7 @@ void handleHelpCommand (PlayerData *player) {
   // Send command guide
   const char help_msg[] = "§7Commands:\n"
   "  !msg <player> <message> - Send a private message\n"
-  #ifdef WHITELIST
+  #if MAX_WHITELISTED_PLAYERS > 0
   "  !whitelist <on|off|add|remove> [username]\n"
   #endif
   "  !help - Show this help message";
