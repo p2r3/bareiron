@@ -1,8 +1,6 @@
 #ifndef H_PROCEDURES
 #define H_PROCEDURES
 
-#include <unistd.h>
-
 #include "globals.h"
 
 extern int client_states[MAX_PLAYERS * 2];
