@@ -84,13 +84,27 @@ void handleWhitelistCommand (PlayerData *player) {
     snprintf((char *)recv_buffer, sizeof(recv_buffer), "§7The currently whitelisted players are:");
     recv_buffer[41] = ' ';
     int length = 42;
+    int totalPlayers = 0;
     for (int i = 0; i < MAX_WHITELISTED_PLAYERS; i ++) {
       if (whitelisted_players[i][0] == '\0') continue;
+
+      totalPlayers++;
+
+      // If we run out of buffer space, then send what we have and loop back to the beginning of the buffer
+      if (length >= MAX_RECV_BUF_LEN - 18) {
+        printf("flushing buffer: len=%d, '%s'\n", length, recv_buffer);
+        sc_systemChat(player->client_fd, (char *)recv_buffer, length);
+        // Set beginning of buffer to '§7' to add chat color to next chunk
+        recv_buffer[0] = 0xC2;
+        recv_buffer[1] = 0xA7;
+        recv_buffer[2] = '7';
+        length = 3;
+      }
 
       snprintf((char *)recv_buffer + length, sizeof(recv_buffer) - length, "%s, ", whitelisted_players[i]);
       length += strlen(whitelisted_players[i]) + 2;
     }
-    if (length == 42){
+    if (totalPlayers == 0) {
         sc_systemChat(player->client_fd, "§7There are currently no whitelisted players", 45);
         return;
     }
