@@ -12,9 +12,16 @@ int getClientState (int client_fd);
 int getClientIndex (int client_fd);
 
 void resetPlayerData (PlayerData *player);
+
+#if MAX_WHITELISTED_PLAYERS > 0
+  uint8_t isPlayerWhitelisted (char *name);
+  uint8_t addPlayerToWhitelist (char *name);
+  uint8_t removePlayerFromWhitelist (char *name);
+#endif
+
 int reservePlayerData (int client_fd, uint8_t *uuid, char* name);
 int getPlayerData (int client_fd, PlayerData **output);
-PlayerData *getPlayerByName (int start_offset, int end_offset, uint8_t *buffer);
+PlayerData *getPlayerByName (char *name, uint8_t *buffer);
 void handlePlayerDisconnect (int client_fd);
 void handlePlayerJoin (PlayerData* player);
 void disconnectClient (int *client_fd, int cause);
