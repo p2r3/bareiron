@@ -148,6 +148,12 @@
 // If defined, players are able to receive damage from nearby cacti.
 #define ENABLE_CACTUS_DAMAGE
 
+// If defined, chat messages can contain any character in range of UTF-8,
+// otherwise chat message are restricted to ASCII characters only
+// and invalid characters will be replaced with '?'.
+// This option requires ~1.5 KB of additional heap memory for encoding and decoding.
+// #define ENABLE_UNICODE_SUPPORT
+
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
 

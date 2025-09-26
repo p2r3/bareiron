@@ -1119,25 +1119,110 @@ int cs_chat (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  size_t message_len = strlen((char *)recv_buffer);
+  size_t message_content_len = strlen((char *)recv_buffer);
   uint8_t name_len = strlen(player->name);
 
-  if (recv_buffer[0] != '!') { // Standard chat message
+  size_t last_valid_len = message_content_len;
+
+  // For valid capping, check until the limit is valid,
+  // so it's not a continuation byte
+  while (last_valid_len > 0 && (recv_buffer[last_valid_len] & 0xC0) == 0x80) {
+    last_valid_len--;
+  }
+
+  // Fallback for the case that first byte is also a continuation byte
+  if ((recv_buffer[0] & 0xC0) == 0x80) {
+    last_valid_len = 0;
+  }
+
+  recv_buffer[last_valid_len] = '\0';
+  message_content_len = last_valid_len;
+
+  char* message = (char *)recv_buffer;
+  uint16_t message_len = message_content_len;
+
+  #ifdef ENABLE_UNICODE_SUPPORT
+  // 16 byte for player name
+  // 3 byte for styling
+  // 1/2/3 byte/s value in utf-8 format equals 1 element
+  uint32_t utf8_decode_buf[224 + 16 + 3];
+  // 1 decoded utf-8 element equals 1/2/3/6 byte/s
+  uint8_t mutf8_encode_buf[1344 + 16 + 3];
+  
+  ssize_t decode_len = utf8_decode(message, utf8_decode_buf);
+
+  if (decode_len == -1) {
+    printf("A problem occurred while decoding a chat message!\n");
+    printf("Message: %s\n", message);
+
+    printf("Message (Hex Dump): ");
+    for (int i = 0; i < strlen(message); ++i) {
+      printf("%02X ", (unsigned char)message[i]);
+    }
+    printf("\n\n");
+
+    return 1; // hmm
+  }
+
+  ssize_t encode_len = mutf8_encode(utf8_decode_buf, mutf8_encode_buf, decode_len);
+
+  if (encode_len == -1) {
+    printf("A problem occurred while encoding a chat message!\n");
+    printf("Message: %s\n", message);
+
+    printf("Message (Hex Dump): ");
+    for (int i = 0; i < strlen(message); ++i) {
+      printf("%02X ", (unsigned char)message[i]);
+    }
+    printf("\n\n");
+
+    return 1; // hmm
+  }
+
+  message = mutf8_encode_buf;
+  message_len = encode_len;
+  #else
+  uint16_t filtered_message_len = 0;
+
+  for (uint16_t i = 0; i < message_len; i++) {
+    unsigned char current_byte = message[i];
+
+    char filtered_char;
+    if (current_byte < 0x80) {
+      filtered_char = current_byte;
+    }
+    else if ((current_byte & 0xC0) != 0x80) {
+      filtered_char = '?';
+    }
+    else {
+      continue;
+    }
+
+    message[filtered_message_len] = filtered_char;
+    filtered_message_len++;
+  }
+
+  message[filtered_message_len] = '\0';
+  message_len = filtered_message_len;
+  #endif
+
+  if (message[0] != '!') { // Standard chat message
 
     // Shift message contents forward to make space for player name tag
-    memmove(recv_buffer + name_len + 3, recv_buffer, message_len + 1);
+    memmove(message + name_len + 3, message, message_len + 1);
     // Copy player name to index 1
-    memcpy(recv_buffer + 1, player->name, name_len);
+    memcpy(message + 1, player->name, name_len);
     // Surround player name with brackets and a space
-    recv_buffer[0] = '<';
-    recv_buffer[name_len + 1] = '>';
-    recv_buffer[name_len + 2] = ' ';
+    message[0] = '<';
+    message[name_len + 1] = '>';
+    message[name_len + 2] = ' ';
+    message_len += name_len + 3;
 
     // Forward message to all connected players
     for (int i = 0; i < MAX_PLAYERS; i ++) {
       if (player_data[i].client_fd == -1) continue;
       if (player_data[i].flags & 0x20) continue;
-      sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, message_len + name_len + 3);
+      sc_systemChat(player_data[i].client_fd, message, message_len);
     }
 
     goto cleanup;
@@ -1152,13 +1237,13 @@ int cs_chat (int client_fd) {
     int text_offset = 0;
 
     // Skip spaces after "!msg"
-    while (recv_buffer[target_offset] == ' ') target_offset++;
+    while (message[target_offset] == ' ') target_offset++;
     target_end_offset = target_offset;
     // Extract target name
-    while (recv_buffer[target_end_offset] != ' ' && recv_buffer[target_end_offset] != '\0' && target_end_offset < 21) target_end_offset++;
+    while (message[target_end_offset] != ' ' && message[target_end_offset] != '\0' && target_end_offset < 21) target_end_offset++;
     text_offset = target_end_offset;
     // Skip spaces before message
-    while (recv_buffer[text_offset] == ' ') text_offset++;
+    while (message[text_offset] == ' ') text_offset++;
 
     // Send usage guide if arguments are missing
     if (target_offset == target_end_offset || target_end_offset == text_offset) {
@@ -1167,7 +1252,7 @@ int cs_chat (int client_fd) {
     }
 
     // Query the target player
-    PlayerData *target = getPlayerByName(target_offset, target_end_offset, recv_buffer);
+    PlayerData *target = getPlayerByName(target_offset, target_end_offset, message);
     if (target == NULL) {
       sc_systemChat(client_fd, "Player not found", 16);
       goto cleanup;
@@ -1176,24 +1261,24 @@ int cs_chat (int client_fd) {
     // Format output as a vanilla whisper
     int name_len = strlen(player->name);
     int text_len = message_len - text_offset;
-    memmove(recv_buffer + name_len + 24, recv_buffer + text_offset, text_len);
-    snprintf((char *)recv_buffer, sizeof(recv_buffer), "§7§o%s whispers to you:", player->name);
-    recv_buffer[name_len + 23] = ' ';
+    memmove(message + name_len + 24, message + text_offset, text_len);
+    snprintf(message, sizeof(recv_buffer), "§7§o%s whispers to you:", player->name);
+    message[name_len + 23] = ' ';
     // Send message to target player
-    sc_systemChat(target->client_fd, (char *)recv_buffer, (uint16_t)(name_len + 24 + text_len));
+    sc_systemChat(target->client_fd, message, (uint16_t)(name_len + 24 + text_len));
 
     // Format output for sending player
     int target_len = target_end_offset - target_offset;
-    memmove(recv_buffer + target_len + 23, recv_buffer + name_len + 24, text_len);
-    snprintf((char *)recv_buffer, sizeof(recv_buffer), "§7§oYou whisper to %s:", target->name);
-    recv_buffer[target_len + 22] = ' ';
+    memmove(message + target_len + 23, message + name_len + 24, text_len);
+    snprintf(message, sizeof(recv_buffer), "§7§oYou whisper to %s:", target->name);
+    message[target_len + 22] = ' ';
     // Report back to sending player
-    sc_systemChat(client_fd, (char *)recv_buffer, (uint16_t)(target_len + 23 + text_len));
+    sc_systemChat(client_fd, message, (uint16_t)(target_len + 23 + text_len));
 
     goto cleanup;
   }
 
-  if (!strncmp((char *)recv_buffer, "!help", 5)) {
+  if (!strncmp(message, "!help", 5)) {
     // Send command guide
     const char help_msg[] = "§7Commands:\n"
     "  !msg <player> <message> - Send a private message\n"
