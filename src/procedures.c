@@ -398,14 +398,14 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
   EntityData metadata[] = {
     {
-      0,               // Index (Entity Bit Mask)
-      0,               // Type (Byte)
-      entity_bit_mask, // Value
+      0,                   // Index (Entity Bit Mask)
+      0,                   // Type (Byte)
+      { entity_bit_mask }, // Value
     },
     {
-      6,    // Index (Pose),
-      21,   // Type (Pose),
-      pose, // Value (Standing)
+      6,        // Index (Pose),
+      21,       // Type (Pose),
+      { pose }, // Value (Standing)
     }
   };
 
@@ -437,9 +437,9 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
 
       metadata = malloc(sizeof *metadata);
       metadata[0] = (EntityData){
-        17,            // Index (Sheep Bit Mask),
-        0,             // Type (Byte),
-        (uint8_t)0x10, // Value
+        17,                // Index (Sheep Bit Mask),
+        0,                 // Type (Byte),
+        { (uint8_t)0x10 }, // Value
       };
       length = 1;
 
