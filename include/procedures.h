@@ -49,6 +49,11 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health);
 void interactEntity (int entity_id, int interactor_id);
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage);
 void handleServerTick (int64_t time_since_last_tick);
+#ifdef ENABLE_OPTIN_MOB_INTERPOLATION
+void processMobInterpolation (int64_t now);
+#else
+static inline void processMobInterpolation (int64_t now) {(void)now;}
+#endif
 
 void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, uint8_t count, uint8_t slot);
 
