@@ -712,7 +712,11 @@ int main () {
     }
     // Handle packet data
     handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
-    if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+	#ifdef _WIN32
+      if (recv_count == 0 || (recv_count == -1 && WSAGetLastError() != WSAEWOULDBLOCK)) {
+    #else
+      if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+    #endif
       disconnectClient(&clients[client_index], 4);
       continue;
     }
