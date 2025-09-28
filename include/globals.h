@@ -117,6 +117,11 @@
 // tickrates, consider disabling SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT too.
 #define BROADCAST_ALL_MOVEMENT
 
+// Optional: interpolate mob movement between ticks by sending one midpoint
+// update per step. Disabled by default to avoid extra memory/bandwidth on
+// very constrained targets.
+// #define ENABLE_OPTIN_MOB_INTERPOLATION
+
 // If defined, scales the frequency at which player movement updates are
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
@@ -248,6 +253,68 @@ typedef struct {
   // Upper 2 bits: panic timer
   uint8_t data;
 } MobData;
+
+// Pack the last horizontal movement delta into the upper bits of the x/z
+// coordinates. This avoids growing MobData while preserving previous
+// positions for interpolation. Valid block range: [-8192, 8191].
+#define MOB_COORD_OFFSET 8192
+#define MOB_COORD_MASK 0x3FFF
+
+static inline short mobBlockCoord (short packed) {
+  return (short)((packed & MOB_COORD_MASK) - MOB_COORD_OFFSET);
+}
+
+static inline int8_t mobDeltaCoord (short packed) {
+  return (int8_t)(((packed >> 14) & 3) - 1);
+}
+
+static inline short mobEncodeCoord (short block, int8_t delta) {
+  uint16_t base = (uint16_t)(block + MOB_COORD_OFFSET) & MOB_COORD_MASK;
+  uint16_t delta_bits = (uint16_t)(delta + 1) & 3;
+  return (short)(base | (delta_bits << 14));
+}
+
+static inline short mobBlockX (const MobData *mob) {
+  return mobBlockCoord(mob->x);
+}
+
+static inline short mobBlockZ (const MobData *mob) {
+  return mobBlockCoord(mob->z);
+}
+
+static inline int8_t mobDeltaX (const MobData *mob) {
+  return mobDeltaCoord(mob->x);
+}
+
+static inline int8_t mobDeltaZ (const MobData *mob) {
+  return mobDeltaCoord(mob->z);
+}
+
+static inline void mobSetX (MobData *mob, short block, int8_t delta) {
+  mob->x = mobEncodeCoord(block, delta);
+}
+
+static inline void mobSetZ (MobData *mob, short block, int8_t delta) {
+  mob->z = mobEncodeCoord(block, delta);
+}
+
+static inline uint8_t mobBaseYaw (int8_t dx, int8_t dz) {
+  if (dx < 0) {
+    uint8_t yaw = 64;
+    if (dz < 0) return yaw + 32;
+    if (dz > 0) return yaw - 32;
+    return yaw;
+  }
+  if (dx > 0) {
+    uint8_t yaw = 192;
+    if (dz < 0) return yaw - 32;
+    if (dz > 0) return yaw + 32;
+    return yaw;
+  }
+  if (dz < 0) return 128;
+  if (dz > 0) return 0;
+  return 0;
+}
 
 #pragma pack(pop)
 
