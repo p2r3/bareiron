@@ -271,6 +271,160 @@ uint64_t splitmix64 (uint64_t state) {
   return z ^ (z >> 31);
 }
 
+ssize_t utf8_decode(char* source, uint32_t* buf) {
+  size_t i = 0;
+  size_t offset = 0;
+  
+  while (true) {
+    unsigned char start = (unsigned char)source[i];
+
+    if (start == '\0') {
+      break;
+    }
+
+    uint32_t codepoint = 0;
+    short pair_count;
+
+    /*
+     * Try to find out pair count by start byte,
+     * pair count above 4 is out of range
+     *
+     * 110.. -> 2
+     * 1110.. -> 3
+     * 11110.. -> 4
+     */
+    if (start < 0x80) {
+      pair_count = 1;
+      codepoint = start;
+    }
+    else if ((start & 0xE0) == 0xC0) {
+      pair_count = 2;
+      codepoint = start & 0x1F;
+    }
+    else if ((start & 0xF0) == 0xE0) {
+      pair_count = 3;
+      codepoint = start & 0x0F;
+    }
+    else if ((start & 0xF8) == 0xF0) {
+      pair_count = 4;
+      codepoint = start & 0x07;
+    }
+    else {
+      return -1;
+    }
+
+    // Process every pair over the codepoint
+    for (int j = 1; j < pair_count; ++j) {
+      unsigned char pair = (unsigned char)source[i + j];
+
+      if (pair == '\0') {
+        return -1; // Pairs missing for the codepoint
+      }      
+      
+      if ((pair & 0xC0) != 0x80) {
+        return -1; // Pair's prefix bit flag is invalid 
+      }
+      
+      codepoint = (codepoint << 6) | (pair & 0x3F);
+    }
+
+    // Check if the codepoint is within its range
+    if ((pair_count == 2 && codepoint < 0x80) ||
+        (pair_count == 3 && codepoint < 0x800) ||
+        (pair_count == 4 && codepoint < 0x10000) ||
+        (codepoint >= 0xD800 && codepoint <= 0xDFFF) ||
+        (codepoint > 0x10FFFF)) {
+      return -1;
+    }
+
+    buf[offset] = codepoint;
+    i += pair_count;
+    offset++;
+  }
+
+  return offset;
+}
+
+ssize_t mutf8_encode(const uint32_t* source, uint8_t* buf, size_t len) {
+  size_t offset = 0;
+
+  for (size_t i = 0; i < len; i++) {
+    uint32_t char_code = source[i];
+
+    /*
+     * Values in range of 0x0001 to 0x007F is represented are single byte
+     *
+     * Byte: 0..<6-0 bits>
+     */
+     if (char_code != 0x00 && char_code <= 0x7F) {
+      buf[offset] = (uint8_t)char_code;
+
+      offset++;
+      continue;
+    }
+    /*
+     * Null value (0x00) and values in range of 0x0080 to 0x07FF are represented as two bytes
+     *
+     * Byte 1: 110..<10-6 bits>
+     * Byte 2: 10..<5-0 bits>
+     */
+    else if (char_code == 0x0000 || char_code <= 0x07FF) {
+      uint8_t byte1 = 0xC0 | ((char_code >> 6) & 0x1F);
+      uint8_t byte2 = 0x80 | (char_code & 0x3F);
+
+      buf[offset] = byte1;
+      buf[offset + 1] = byte2;
+
+      offset += 2;
+      continue;
+    }
+    else if (char_code >= 0x10FFFF) {
+      return -1; // Invalid MUTF-8 value
+    }
+
+    /*
+     * Values in range of 0x0800 to 0xFFFF are represented as three bytes
+     *
+     * Byte 1: 1110..<15-12 bits>
+     * Byte 2: 10..<11-6 bits>
+     * Byte 3: 10..<5-6 bits>
+     *
+     * Supplementary characters are represented in the form of surrogate pairs,
+     * that means values that greater than 0x10000 are represented as two pairs of three bytes
+     * with the structure shown above
+     */
+    uint32_t temp_code;
+    uint8_t should_surrogate = false;
+
+    if (char_code >= 0x10000) {
+      should_surrogate = true;
+      temp_code = char_code - 0x10000;
+      char_code = 0xD800 | ((temp_code >> 10) & 0x03FF);
+    }
+      
+    do {
+      uint8_t byte1 = 0xE0 | ((char_code >> 12) & 0x0F);
+      uint8_t byte2 = 0x80 | ((char_code >> 6) & 0x3F);
+      uint8_t byte3 = 0x80 | (char_code & 0x3F);
+
+      buf[offset] = byte1;
+      buf[offset + 1] = byte2;
+      buf[offset + 2] = byte3;
+    
+      offset += 3;
+
+      if (should_surrogate) {
+        should_surrogate = false;
+        char_code = 0xDC00 | (temp_code & 0x3FF);
+      } else {
+        break;
+      }
+    } while (true);
+  }
+
+  return offset;
+}
+
 #ifndef ESP_PLATFORM
 // Returns system time in microseconds.
 // On ESP-IDF, this is available in "esp_timer.h", and returns time *since
