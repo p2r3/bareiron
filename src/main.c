@@ -36,7 +36,7 @@
 #include "varnum.h"
 #include "packets.h"
 #include "worldgen.h"
-#include "registries.h"
+//#include "registries.h"
 #include "procedures.h"
 #include "serialize.h"
 
