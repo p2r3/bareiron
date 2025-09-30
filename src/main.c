@@ -496,7 +496,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 
 }
 
-int main () {
+int main (int argc, char *argv[]) {
   #ifdef _WIN32 //initialize windows socket
     WSADATA wsa;
       if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
@@ -551,10 +551,22 @@ int main () {
     exit(EXIT_FAILURE);
   }
 
-  // Bind socket to IP/port
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = INADDR_ANY;
-  server_addr.sin_port = htons(PORT);
+  long server_port = PORT;
+
+  while ((opt = getopt(argc, argv, "p:a:")) != -1) { 
+	 switch (opt) {
+		 case 'p':
+			 server_port = atoi(optarg);
+			 break;
+		 default:
+			 fprintf(stderr, "Invalid option: -%s", opt);
+			 exit(EXIT_FAILURE);
+	 }
+  }	
+   // Bind socket to IP/port
+ server_addr.sin_family = AF_INET;
+ server_addr.sin_addr.s_addr = INADDR_ANY;
+ server_addr.sin_port = htons(server_port);
 
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind failed");
