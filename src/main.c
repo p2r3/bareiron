@@ -580,7 +580,7 @@ int main (int argc, char *argv[]) {
     close(server_fd);
     exit(EXIT_FAILURE);
   }
-  printf("Server listening on port %d...\n", PORT);
+  printf("Server listening on port %d...\n", server_port);
 
   // Make the socket non-blocking
   // This is necessary to not starve the idle task during slow connections
