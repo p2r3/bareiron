@@ -51,6 +51,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
 void handleServerTick (int64_t time_since_last_tick);
 
 void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, uint8_t count, uint8_t slot);
+void activateNetherReactor(short x, short y, short z);
 
 ssize_t writeEntityData (int client_fd, EntityData *data);
 
