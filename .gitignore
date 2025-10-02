@@ -1,6 +1,8 @@
 .vscode
 notchian
 bareiron
+bareiron.aarch64.elf
+bareiron.com.dbg
 bareiron.exe
 src/registries.c
 include/registries.h

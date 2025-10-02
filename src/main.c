@@ -36,7 +36,7 @@
 #include "varnum.h"
 #include "packets.h"
 #include "worldgen.h"
-//#include "registries.h"
+#include "registries.h"
 #include "procedures.h"
 #include "serialize.h"
 
@@ -504,6 +504,16 @@ int main (int argc, char *argv[]) {
         exit(EXIT_FAILURE);
       }
   #endif
+  long argv_server_port = 25565;
+  int opt = 1;
+  if (argc > 1) {
+        if (atoi(argv[1]) > 0 && atoi(argv[1]) < 65535) { 
+			    argv_server_port = atoi(argv[1]);
+			  } else {
+          fprintf(stderr, "%s: Not a valid port number\n", argv[1]);
+			    exit(EXIT_FAILURE);
+        }
+	 }
 
   // Hash the seeds to ensure they're random enough
   world_seed = splitmix64(world_seed);
@@ -532,7 +542,7 @@ int main (int argc, char *argv[]) {
   }
 
   // Create server TCP socket
-  int server_fd, opt = 1;
+  int server_fd;
   struct sockaddr_in server_addr, client_addr;
   socklen_t addr_len = sizeof(client_addr);
 
@@ -551,22 +561,11 @@ int main (int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  long server_port = PORT;
 
-  while ((opt = getopt(argc, argv, "p:a:")) != -1) { 
-	 switch (opt) {
-		 case 'p':
-			 server_port = atoi(optarg);
-			 break;
-		 default:
-			 fprintf(stderr, "Invalid option: -%s", opt);
-			 exit(EXIT_FAILURE);
-	 }
-  }	
    // Bind socket to IP/port
  server_addr.sin_family = AF_INET;
  server_addr.sin_addr.s_addr = INADDR_ANY;
- server_addr.sin_port = htons(server_port);
+ server_addr.sin_port = htons(argv_server_port);
 
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
     perror("bind failed");
@@ -580,7 +579,7 @@ int main (int argc, char *argv[]) {
     close(server_fd);
     exit(EXIT_FAILURE);
   }
-  printf("Server listening on port %d...\n", server_port);
+  printf("Server listening on port %d...\n", argv_server_port);
 
   // Make the socket non-blocking
   // This is necessary to not starve the idle task during slow connections
