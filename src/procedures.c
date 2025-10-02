@@ -500,6 +500,7 @@ void failBlockChange (short x, uint8_t y, short z, uint8_t block) {
 }
 
 uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
+  printf("makeBlockChange called with x: %d, y: %d, z: %d, block: %d\n", x, y, z, block);
 
   // Transmit block update to all in-game clients
   for (int i = 0; i < MAX_PLAYERS; i ++) {
@@ -1144,7 +1145,7 @@ void playPickupAnimation (PlayerData *player, uint16_t item, double x, double y,
 #endif
 
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
-
+  printf("[DEBUG] Player action %d at x: %d, y: %d, z: %d\n", action, x, y, z);
   // Re-sync slot when player drops an item
   if (action == 3 || action == 4) {
     sc_setContainerSlot(
@@ -1218,7 +1219,7 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 }
 
 void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t face) {
-
+  printf("[DEBUG] Player use item at x: %d, y: %d, z: %d, face: %d\n", x, y, z, face);
   // Get targeted block (if coordinates are provided)
   uint8_t target = face == 255 ? 0 : getBlockAt(x, y, z);
   // Get held item properties
@@ -1328,9 +1329,14 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   // Don't proceed with block placement if no coordinates were provided
   if (face == 255) return;
 
+  printf("[DEBUG] Proceeding with block placement checks.\n");
+  printf("[DEBUG] item in hand is %d (count: %d).\n", *item, *count);
+
   // If the selected item doesn't correspond to a block, exit
-  uint8_t block = I_to_B(*item);
+  uint16_t block = I_to_B(*item);
   if (block == 0) return;
+
+  printf("[DEBUG] Selected item corresponds to block %d.\n", block);
 
   switch (face) {
     case 0: y -= 1; break;
@@ -1341,6 +1347,13 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     case 5: x += 1; break;
     default: break;
   }
+
+  printf("[DEBUG] Checking all placement conditions: passable: %d, replaceable: %d, column: %d, below: %d.\n",
+    isPassableBlock(block),
+    isReplaceableBlock(getBlockAt(x, y, z)),
+    isColumnBlock(block),
+    getBlockAt(x, y - 1, z) != B_air
+  );
 
   // Check if the block's placement conditions are met
   if (
@@ -1353,10 +1366,12 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     isReplaceableBlock(getBlockAt(x, y, z)) &&
     (!isColumnBlock(block) || getBlockAt(x, y - 1, z) != B_air)
   ) {
+    printf("[DEBUG] Block placement conditions met, placing block %d at x: %d, y: %d, z: %d.\n", block, x, y, z);
     // Apply server-side block change
     if (makeBlockChange(x, y, z, block)) return;
     // Decrease item amount in selected slot
     *count -= 1;
+    printf("[DEBUG] Decreased item count, new count is %d.\n", *count);
     // Clear item id in slot if amount is zero
     if (*count == 0) *item = 0;
     // Calculate fluid flow
@@ -1369,9 +1384,19 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     #endif
   }
 
+  printf("[DEBUG] Exiting block placement checks.\n");
+
   // Sync hotbar contents to player
   sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
 
+  // Trigger Nether Reactor activation when the block is used
+  printf("[DEBUG] Checking for Nether Reactor activation.\n");
+  printf("[DEBUG] Held item is %d, Nether Reactor ID is %d.\n", *item, I_jigsaw);
+  if (*item == I_jigsaw) {
+    printf("Activating Nether Reactor at x: %d, y: %d, z: %d\n", x, y, z);
+    activateNetherReactor(x, y, z);
+    return;
+  }
 }
 
 void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
@@ -1971,4 +1996,36 @@ int sizeEntityMetadata (EntityData *metadata, size_t length) {
     total_size += size;
   }
   return total_size;
+}
+
+// Function to activate the Nether Reactor
+void activateNetherReactor(short x, short y, short z) {
+    // Define the radius of terrain conversion
+    const int radius = 5;
+    printf("Nether Reactor activated at (%d, %d, %d)\n", x, y, z);
+
+    // Iterate through the area around the reactor
+    for (short dx = -radius; dx <= radius; dx++) {
+      for (short dz = -radius; dz <= radius; dz++) {
+          for (short dy = -radius; dy <= radius; dy++) {
+            printf("[DEBUG] Checking block at offset (%d, %d, %d)\n", dx, dy, dz);
+            short nx = x + dx;
+            short nz = z + dz;
+            short ny = y + dy;
+
+            // Get the current block at the position
+            uint8_t block = getBlockAt(nx, ny, nz);
+            printf("[DEBUG] Block at (%d, %d, %d) is %d\n", nx, ny, nz, block);
+            // Replace grass with netherrack and water with lava
+            if (block == B_grass_block) {
+              makeBlockChange(nx, ny, nz, B_netherrack);
+            } else if (block == B_water) {
+              makeBlockChange(nx, ny, nz, B_lava);
+            }
+          }
+      }
+    }
+
+    // Spawn Nether mobs around the reactor
+    // TODO
 }

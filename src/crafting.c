@@ -328,6 +328,22 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
         case I_copper_ingot: *item = I_copper_block; *count = 1; return;
         default: break;
       }
+      // Nether Reactor Core recipe
+      if (
+        player->craft_items[0] == I_iron_ingot &&
+        player->craft_items[1] == I_diamond &&
+        player->craft_items[2] == I_iron_ingot &&
+        player->craft_items[3] == I_iron_ingot &&
+        player->craft_items[4] == I_diamond &&
+        player->craft_items[5] == I_iron_ingot &&
+        player->craft_items[6] == I_iron_ingot &&
+        player->craft_items[7] == I_diamond &&
+        player->craft_items[8] == I_iron_ingot
+      ) {
+        *item = I_jigsaw;
+        *count = 1;
+        return;
+      }
       break;
 
     default: break;
