@@ -5,6 +5,24 @@
 
 #include "globals.h"
 
+/* how do we / can we do inline */
+#if defined(_MSC_VER) && _MSC_VER < 1200
+/* available as a MS extension '__inline' */
+#  define inline __inline
+#elif defined(__GNUC__)
+#  if defined(__STDC_VERSION__) && __STDC_VERSION__ > 199901L
+/* available as 'inline' */
+#  elif !defined(__STRICT_ANSI__)
+/* available as GNU extension 'inline' */
+#  else
+/*#    warning "No known way to do inline functions in this compiler - doing nothing"*/
+#    define inline /* nothing */
+#  endif
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ < 199901L
+/*#  warning "No known way to do inline functions in this compiler - doing nothing"*/
+#  define inline /* nothing */
+#endif
+
 static inline int mod_abs (int a, int b) {
   return ((a % b) + b) % b;
 }
