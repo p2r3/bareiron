@@ -1,7 +1,7 @@
 #ifndef H_PACKETS
 #define H_PACKETS
 
-// Serverbound packets
+/* Serverbound packets */
 int cs_handshake (int client_fd);
 int cs_loginStart (int client_fd, uint8_t *uuid, char *name);
 int cs_clientInformation (int client_fd);
@@ -24,7 +24,7 @@ int cs_playerInput (int client_fd);
 int cs_playerCommand (int client_fd);
 int cs_playerLoaded (int client_fd);
 
-// Clientbound packets
+/* Clientbound packets */
 int sc_statusResponse (int client_fd);
 int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name);
 int sc_knownPacks (int client_fd);

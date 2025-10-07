@@ -14,6 +14,7 @@ case "$OSTYPE" in
 esac
 
 # mingw64-specific linker options
+c_std=""
 windows_linker=""
 unameOut="$(uname -s)"
 case "$unameOut" in
@@ -37,9 +38,12 @@ for arg in "$@"; do
         exit 1
       fi
       ;;
+    --strict-c89)
+      c_std="-std=c89 -pedantic -Werror=declaration-after-statement"
+      ;;
   esac
 done
 
 rm -f "bareiron$exe"
-$compiler src/*.c -O3 -Iinclude -o "bareiron$exe" $windows_linker
+$compiler src/*.c $c_std -O3 -Iinclude -o "bareiron$exe" $windows_linker
 "./bareiron$exe"
