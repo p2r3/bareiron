@@ -29,9 +29,7 @@ Due to this focus, Bare-Iron is not a vanilla-compliant server. It is a lightwei
 
 ## Getting Started
 
-### For PC (Windows, Linux, macOS)
-
-The easiest way to get started on a PC is to download the latest pre-compiled binary from the [Releases](https://github.com/p2r3/bareiron/releases) page. The executable is a Cosmopolitan Polyglot, meaning the same file will run across different operating systems.
+This guide focuses on setting up the server on a microcontroller.
 
 ### For Microcontrollers (ESP32 & ESP8266)
 
@@ -95,6 +93,30 @@ For users who wish to fine-tune the server's performance and features, most high
 - `BROADCAST_ALL_MOVEMENT`: Disabling this ties player movement updates to the server tickrate, reducing network traffic at the cost of smoother movement.
 - `ALLOW_CHESTS` & `DO_FLUID_FLOW`: These features can be disabled to save memory and processing power, which is recommended on highly constrained devices.
 - `MAX_BLOCK_CHANGES`: Defines the maximum number of player-made block modifications stored in memory. Lowering this value significantly reduces RAM usage.
+
+---
+
+## Performance
+
+> **Disclaimer:** This project has been developed in a simulated environment. The following performance metrics are **estimates** and have not been verified on physical hardware. We highly encourage users to report any issues or performance feedback by opening an issue or a pull request. Your contributions are valuable!
+
+The server's performance is heavily dependent on the hardware and the number of concurrent players. Below is a rough estimation of what to expect.
+
+### ESP32 (Default Configuration)
+
+| Players | Est. TPS (Ticks Per Second) | Est. RAM Usage | Playability                               |
+| :------ | :-------------------------- | :------------- | :---------------------------------------- |
+| 1-2     | 20                          | ~120 KB        | Smooth, very playable.                    |
+| 3-4     | 15-20                       | ~150 KB        | Generally smooth, with occasional lag.    |
+| 5+      | 5-15                        | ~200 KB+       | Playable, but expect significant network and tick-rate lag. |
+
+### ESP8266 (`TARGET_ESP8266` flag enabled)
+
+| Players | Est. TPS (Ticks Per Second) | Est. RAM Usage | Playability                               |
+| :------ | :-------------------------- | :------------- | :---------------------------------------- |
+| 1       | 10-15                       | ~40 KB         | Playable, but may feel slightly sluggish. |
+| 2       | 5-10                        | ~50 KB         | Expect noticeable lag and potential instability. |
+| 3+      | < 5                         | > 60 KB        | Not recommended, likely to crash.         |
 
 ---
 
