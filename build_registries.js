@@ -60,7 +60,13 @@ const blockWhitelist = [
   "composter",
   "coal_block",
   "copper_ore",
-  "copper_block"
+  "copper_block",
+  "netherrack",
+  "soul_sand",
+  "glowstone",
+  "end_stone",
+  "obsidian",
+  "bedrock"
 ];
 
 // Currently, only 4 biome types are supported, excluding "beach"
@@ -69,7 +75,9 @@ const biomes = [
   "mangrove_swamp",
   "desert",
   "snowy_plains",
-  "beach"
+  "beach",
+  "nether_wastes",
+  "the_end"
 ];
 
 // Extract item and block data from registry dump

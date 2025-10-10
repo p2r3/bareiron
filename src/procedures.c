@@ -82,6 +82,8 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
       // Flag player as loading
       player_data[i].flags |= 0x20;
       player_data[i].flagval_16 = 0;
+      // Set their dimension to Overworld
+      player_data[i].dimension = DIMENSION_OVERWORLD;
       // Reset their recently visited chunk list
       for (int j = 0; j < VISITED_HISTORY; j ++) {
         player_data[i].visited_x[j] = 32767;
@@ -103,6 +105,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
       player_data[i].client_fd = client_fd;
       player_data[i].flags |= 0x20;
       player_data[i].flagval_16 = 0;
+      player_data[i].dimension = DIMENSION_OVERWORLD;
       memcpy(player_data[i].uuid, uuid, 16);
       memcpy(player_data[i].name, name, 16);
       resetPlayerData(&player_data[i]);
