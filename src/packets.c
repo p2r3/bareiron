@@ -187,9 +187,22 @@ int sc_finishConfiguration (int client_fd) {
 }
 
 // S->C Login (play)
-int sc_loginPlay (int client_fd) {
+int sc_loginPlay (int client_fd, PlayerData *player) {
+  const char *dimension_name;
+  switch (player->dimension) {
+    case DIMENSION_NETHER:
+      dimension_name = "the_nether";
+      break;
+    case DIMENSION_END:
+      dimension_name = "the_end";
+      break;
+    default:
+      dimension_name = "overworld";
+      break;
+  }
+  int dimension_len = strlen(dimension_name);
 
-  writeVarInt(client_fd, 47 + sizeVarInt(MAX_PLAYERS) + sizeVarInt(VIEW_DISTANCE) * 2);
+  writeVarInt(client_fd, 47 + sizeVarInt(MAX_PLAYERS) + sizeVarInt(VIEW_DISTANCE) * 2 + dimension_len * 2);
   writeByte(client_fd, 0x2B);
   // entity id
   writeUint32(client_fd, client_fd);
@@ -197,9 +210,8 @@ int sc_loginPlay (int client_fd) {
   writeByte(client_fd, false);
   // dimensions
   writeVarInt(client_fd, 1);
-  writeVarInt(client_fd, 9);
-  const char *dimension = "overworld";
-  send_all(client_fd, dimension, 9);
+  writeVarInt(client_fd, dimension_len);
+  send_all(client_fd, dimension_name, dimension_len);
   // maxplayers
   writeVarInt(client_fd, MAX_PLAYERS);
   // view distance
@@ -213,10 +225,10 @@ int sc_loginPlay (int client_fd) {
   // limited crafting
   writeByte(client_fd, false);
   // dimension id
-  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, player->dimension);
   // dimension name
-  writeVarInt(client_fd, 9);
-  send_all(client_fd, dimension, 9);
+  writeVarInt(client_fd, dimension_len);
+  send_all(client_fd, dimension_name, dimension_len);
   // hashed seed
   writeUint64(client_fd, 0x0123456789ABCDEF);
   // gamemode
@@ -365,7 +377,24 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     // block palette as varint buffer
     send_all(client_fd, network_block_palette, sizeof(network_block_palette));
     // chunk section buffer
-    uint8_t biome = buildChunkSection(x, y, z);
+    PlayerData* player;
+    uint8_t biome;
+    if (getPlayerData(client_fd, &player) != 0) {
+      // Fallback to overworld if player data not found
+      biome = buildChunkSection(x, y, z);
+    } else {
+      switch (player->dimension) {
+        case DIMENSION_NETHER:
+          biome = buildChunkSectionNether(x, y, z);
+          break;
+        case DIMENSION_END:
+          biome = buildChunkSectionEnd(x, y, z);
+          break;
+        default:
+          biome = buildChunkSection(x, y, z);
+          break;
+      }
+    }
     send_all(client_fd, chunk_section, 4096);
     // biome data
     writeByte(client_fd, 0); // bits per entry
@@ -1043,17 +1072,29 @@ int sc_setHealth (int client_fd, uint8_t health, uint8_t food, uint16_t saturati
 }
 
 // S->C Respawn
-int sc_respawn (int client_fd) {
+int sc_respawn (int client_fd, PlayerData *player) {
+  const char *dimension_name;
+  switch (player->dimension) {
+    case DIMENSION_NETHER:
+      dimension_name = "the_nether";
+      break;
+    case DIMENSION_END:
+      dimension_name = "the_end";
+      break;
+    default:
+      dimension_name = "overworld";
+      break;
+  }
+  int dimension_len = strlen(dimension_name);
 
-  writeVarInt(client_fd, 28);
+  writeVarInt(client_fd, 28 + dimension_len);
   writeByte(client_fd, 0x4B);
 
   // dimension id
-  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, player->dimension);
   // dimension name
-  const char *dimension = "overworld";
-  writeVarInt(client_fd, 9);
-  send_all(client_fd, dimension, 9);
+  writeVarInt(client_fd, dimension_len);
+  send_all(client_fd, dimension_name, dimension_len);
   // hashed seed
   writeUint64(client_fd, 0x0123456789ABCDEF);
   // gamemode
@@ -1122,7 +1163,7 @@ int cs_chat (int client_fd) {
   size_t message_len = strlen((char *)recv_buffer);
   uint8_t name_len = strlen(player->name);
 
-  if (recv_buffer[0] != '!') { // Standard chat message
+  if (recv_buffer[0] != '/') { // Standard chat message
 
     // Shift message contents forward to make space for player name tag
     memmove(recv_buffer + name_len + 3, recv_buffer, message_len + 1);
@@ -1145,7 +1186,22 @@ int cs_chat (int client_fd) {
 
   // Handle chat commands
 
-  if (!strncmp((char *)recv_buffer, "!msg", 4)) {
+  if (!strncmp((char *)recv_buffer, "/nether", 7)) {
+    teleportPlayerToDimension(player, DIMENSION_NETHER);
+    goto cleanup;
+  }
+
+  if (!strncmp((char *)recv_buffer, "/end", 4)) {
+    teleportPlayerToDimension(player, DIMENSION_END);
+    goto cleanup;
+  }
+
+  if (!strncmp((char *)recv_buffer, "/overworld", 10)) {
+    teleportPlayerToDimension(player, DIMENSION_OVERWORLD);
+    goto cleanup;
+  }
+
+  if (!strncmp((char *)recv_buffer, "/msg", 4)) {
 
     int target_offset = 5;
     int target_end_offset = 0;
@@ -1193,11 +1249,14 @@ int cs_chat (int client_fd) {
     goto cleanup;
   }
 
-  if (!strncmp((char *)recv_buffer, "!help", 5)) {
+  if (!strncmp((char *)recv_buffer, "/help", 5)) {
     // Send command guide
     const char help_msg[] = "§7Commands:\n"
-    "  !msg <player> <message> - Send a private message\n"
-    "  !help - Show this help message";
+    "  /msg <player> <message> - Send a private message\n"
+    "  /nether - Teleport to the Nether\n"
+    "  /end - Teleport to the End\n"
+    "  /overworld - Teleport to the Overworld\n"
+    "  /help - Show this help message";
     sc_systemChat(client_fd, (char *)help_msg, (uint16_t)sizeof(help_msg) - 1);
     goto cleanup;
   }

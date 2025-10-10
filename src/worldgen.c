@@ -487,3 +487,96 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
   return chunk_anchors[0].biome;
 
 }
+
+// Builds a 16x16x16 chunk of blocks for the Nether dimension
+uint8_t buildChunkSectionNether (int cx, int cy, int cz) {
+  int x_offset = cx * 16;
+  int z_offset = cz * 16;
+
+  for (int i = 0; i < 4096; i++) {
+    int y = i / 256 + cy;
+    int x = i % 16 + x_offset;
+    int z = (i / 16) % 16 + z_offset;
+
+    // Bedrock floor and ceiling
+    if (y == 0 || y == 127) {
+      chunk_section[i] = B_bedrock;
+      continue;
+    }
+
+    // Simple 3D noise for caves
+    uint32_t cave_hash = getChunkHash(x / 8, y / 8) ^ getChunkHash(z / 8, y / 8);
+    if ((cave_hash >> (y % 8)) % 5 == 0) {
+        chunk_section[i] = B_air;
+        continue;
+    }
+
+    // Generate terrain height noise
+    uint32_t terrain_hash = getChunkHash(x / 4, z / 4);
+    int height_variation = (terrain_hash % 15) - 5; // Variation between -5 and 10
+    int surface_level = 64 + height_variation;
+
+    if (y > surface_level) {
+        chunk_section[i] = B_air;
+    } else if (y == surface_level) {
+        // Place soul sand patches
+        if ((terrain_hash >> 8) % 10 == 0) {
+            chunk_section[i] = B_soul_sand;
+        } else {
+            chunk_section[i] = B_netherrack;
+        }
+    } else {
+        chunk_section[i] = B_netherrack;
+    }
+
+    // Lava sea
+    if (y < 32 && chunk_section[i] == B_air) {
+      chunk_section[i] = B_lava;
+    }
+
+    // Glowstone clusters on ceilings
+    if (chunk_section[i] == B_netherrack && y < 126) {
+        int idx_above = i + 256;
+        if (idx_above < 4096 && chunk_section[idx_above] == B_air) {
+            uint32_t glowstone_hash = getChunkHash(x, z) ^ y;
+            if (glowstone_hash % 100 < 5) { // 5% chance
+                chunk_section[i] = B_glowstone;
+            }
+        }
+    }
+  }
+
+  return W_nether_wastes;
+}
+
+// Builds a 16x16x16 chunk of blocks for the End dimension
+uint8_t buildChunkSectionEnd (int cx, int cy, int cz) {
+  int x_offset = cx * 16;
+  int z_offset = cz * 16;
+  const int island_radius = 64;
+  const int island_center_y = 60;
+
+  for (int i = 0; i < 4096; i++) {
+    int y = i / 256 + cy;
+    int x = i % 16 + x_offset;
+    int z = (i / 16) % 16 + z_offset;
+
+    // Calculate distance from the center of the End island
+    int dist_sq = x * x + z * z;
+
+    // Determine the island's height at this point
+    int height = 0;
+    if (dist_sq < island_radius * island_radius) {
+      // Simple parabolic shape for the island
+      height = island_center_y - (dist_sq / (island_radius * 2));
+    }
+
+    if (y < height) {
+      chunk_section[i] = B_end_stone;
+    } else {
+      chunk_section[i] = B_air; // The End is mostly void
+    }
+  }
+
+  return W_the_end;
+}
