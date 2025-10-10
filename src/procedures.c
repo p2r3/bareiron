@@ -384,32 +384,6 @@ void spawnPlayer (PlayerData *player) {
 
 }
 
-void teleportPlayerToDimension(PlayerData *player, int dimension) {
-  if (player->dimension == dimension) return;
-
-  // Store previous dimension to handle coordinate scaling
-  int prev_dimension = player->dimension;
-  player->dimension = dimension;
-
-  // Coordinate scaling
-  if (dimension == DIMENSION_NETHER && prev_dimension == DIMENSION_OVERWORLD) {
-    player->x /= 8;
-    player->z /= 8;
-  } else if (dimension == DIMENSION_OVERWORLD && prev_dimension == DIMENSION_NETHER) {
-    player->x *= 8;
-    player->z *= 8;
-  } else if (dimension == DIMENSION_END) {
-    // Spawn player at a fixed point on the main End island
-    player->x = 100;
-    player->y = 65; // A bit above the island surface
-    player->z = 0;
-  }
-
-  // Force respawn to reload chunks in the new dimension
-  sc_respawn(player->client_fd);
-  spawnPlayer(player);
-}
-
 // Broadcasts a player's entity metadata (sneak/sprint state) to other players
 void broadcastPlayerMetadata (PlayerData *player) {
   uint8_t sneaking = (player->flags & 0x04) != 0;

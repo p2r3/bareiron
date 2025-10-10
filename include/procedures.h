@@ -20,7 +20,6 @@ void handlePlayerJoin (PlayerData* player);
 void disconnectClient (int *client_fd, int cause);
 int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count);
 void spawnPlayer (PlayerData *player);
-void teleportPlayerToDimension(PlayerData *player, int dimension);
 
 void broadcastPlayerMetadata (PlayerData *player);
 void broadcastMobMetadata (int client_fd, int entity_id);
