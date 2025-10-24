@@ -256,12 +256,13 @@ typedef struct {
 
 union EntityDataValue {
   uint8_t byte;
-  int pose;
+  int varint; // Also used for poses
 };
 
 typedef struct {
   uint8_t index;
   // 0 - Byte
+  // 1 - VarInt
   // 21 - Pose
   int type;
   union EntityDataValue value;

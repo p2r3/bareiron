@@ -431,6 +431,18 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
   size_t length;
 
   switch (mob->type) {
+    case 30: // Creeper
+      int fuse;
+      if ((mob->data >> 6) & 3) fuse = 1;
+      else fuse = -1;
+      metadata = malloc(sizeof *metadata);
+      metadata[0] = (EntityData){
+        16,                  // Index (Fuse)
+        1,                   // Type (VarInt)
+        { .varint = fuse },  // Value
+      };
+      length = 1;
+      break;
     case 106: // Sheep
       if (!((mob->data >> 5) & 1)) // Don't send metadata if sheep isn't sheared
         return;
@@ -1825,6 +1837,7 @@ void handleServerTick (int64_t time_since_last_tick) {
               mob_data[i].type = 0;
             } else {
               mob_data[i].data += (1 << 6);
+              broadcastMobMetadata(-1, entity_id);
             }
             continue;
           default: break;
@@ -1834,6 +1847,7 @@ void handleServerTick (int64_t time_since_last_tick) {
       // Creeper defuse
       if (mob_data[i].type == 30 && panic && (closest_dist >= 5 || !close_on_y_axis)) {
         mob_data[i].data &= 0x3F;
+        broadcastMobMetadata(-1, entity_id);
         continue;
       }
 
@@ -1981,8 +1995,9 @@ ssize_t writeEntityData (int client_fd, EntityData *data) {
   switch (data->type) {
     case 0: // Byte
       return writeByte(client_fd, data->value.byte);
+    case 1: // VarInt
     case 21: // Pose
-      writeVarInt(client_fd, data->value.pose);
+      writeVarInt(client_fd, data->value.varint);
       return 0;
 
     default: return -1;
@@ -1997,8 +2012,9 @@ int sizeEntityData (EntityData *data) {
     case 0: // Byte
       value_size = 1;
       break;
+    case 1: // VarInt
     case 21: // Pose
-      value_size = sizeVarInt(data->value.pose);
+      value_size = sizeVarInt(data->value.varint);
       break;
 
     default: return -1;
