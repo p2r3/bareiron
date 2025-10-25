@@ -53,7 +53,7 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   if (require_first) {
     ssize_t r = recv(client_fd, p, 1, MSG_PEEK);
     if (r <= 0) {
-	    #ifdef _WIN32
+        #ifdef _WIN32
         if (r < 0 && (WSAGetLastError() == WSAEWOULDBLOCK)) {
       #else
         if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
@@ -68,7 +68,7 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   while (total < n) {
     ssize_t r = recv(client_fd, p + total, n - total, 0);
     if (r < 0) {
-	    #ifdef _WIN32
+        #ifdef _WIN32
         if (WSAGetLastError() == WSAEWOULDBLOCK) {
       #else
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
