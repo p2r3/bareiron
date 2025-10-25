@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -47,7 +47,7 @@ jobs:
 
       - name: Build project
         run: |
-          cosmocc src/*.c -O3 -Iinclude -o bareiron.exe
+          cosmocc src/*.c -O2 -Iinclude -o bareiron.exe
 
       - name: Upload release
         uses: softprops/action-gh-release@v2

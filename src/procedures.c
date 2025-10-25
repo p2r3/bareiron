@@ -398,14 +398,14 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
   EntityData metadata[] = {
     {
-      0,               // Index (Entity Bit Mask)
-      0,               // Type (Byte)
-      entity_bit_mask, // Value
+      0,                   // Index (Entity Bit Mask)
+      0,                   // Type (Byte)
+      { entity_bit_mask }, // Value
     },
     {
-      6,    // Index (Pose),
-      21,   // Type (Pose),
-      pose, // Value (Standing)
+      6,        // Index (Pose),
+      21,       // Type (Pose),
+      { pose }, // Value (Standing)
     }
   };
 
@@ -437,9 +437,9 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
 
       metadata = malloc(sizeof *metadata);
       metadata[0] = (EntityData){
-        17,            // Index (Sheep Bit Mask),
-        0,             // Type (Byte),
-        (uint8_t)0x10, // Value
+        17,                // Index (Sheep Bit Mask),
+        0,                 // Type (Byte),
+        { (uint8_t)0x10 }, // Value
       };
       length = 1;
 
@@ -579,6 +579,8 @@ uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
     // which naturally appends the chest to the end if a gap isn't found.
     int last_real_entry = first_gap - 1;
     for (int i = first_gap; i <= block_changes_count + 15; i ++) {
+      if (i >= MAX_BLOCK_CHANGES) break; // No more space, trigger failBlockChange
+
       if (block_changes[i].block != 0xFF) {
         last_real_entry = i;
         continue;

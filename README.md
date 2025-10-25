@@ -46,7 +46,8 @@ If using an SD card module or other virtual file system, you'll have to implemen
 Alternatively, if you can't set up a file system, you can dump and upload world data over TCP. This can be enabled by uncommenting `DEV_ENABLE_BEEF_DUMPS` in `globals.h`. *Note: this system implements no security or authentication.* With this option enabled, anyone with access to the server can upload arbitrary world data.
 
 ## Contribution
-- Create issues and discuss with the maintainer(s) before making pull requests.
+- Create issues and discuss with the maintainer(s) before making pull requests. Even for small changes.
 - Follow the existing code style. Ensure that your changes fit in with the surrounding code, even if you disagree with the style. Pull requests with inconsistent style will be nitpicked.
 - Test your code before creating a pull request or requesting a review, regardless of how "simple" your change is. It's a basic form of respect towards the maintainer and reviewer.
-- Development tooling and compilation improvements _are not welcome,_ unless you've worked with the codebase long enough to have noticed practical shortcomings in that area. I'm tired of receiving tooling PRs from people who don't intend to work with those tools.
+- Development tooling and compilation improvements _are not welcome,_ unless you've worked with the codebase long enough to have noticed practical shortcomings in that area. Adding a single compiler flag is not a meaningful first contribution.
+- For information on the Minecraft server protocol, [refer to the wiki](https://minecraft.wiki/w/Java_Edition_protocol/Packets). For everything else, use a [search engine](https://google.com).
