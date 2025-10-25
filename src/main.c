@@ -712,7 +712,7 @@ int main () {
     }
     // Handle packet data
     handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
-	#ifdef _WIN32
+    #ifdef _WIN32
       if (recv_count == 0 || (recv_count == -1 && WSAGetLastError() != WSAEWOULDBLOCK)) {
     #else
       if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
