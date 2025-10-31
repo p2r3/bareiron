@@ -1771,8 +1771,8 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Currently has no effect on hostile mobs
     uint8_t panic = (mob_data[i].data >> 6) & 3;
 
-    // Burn hostile mobs if above ground during sunlight
-    if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
+    // Burn undead mobs if above ground during sunlight
+    if (mob_data[i].type == 145 && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
       hurtEntity(entity_id, -1, D_on_fire, 2);
     }
 
