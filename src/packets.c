@@ -213,7 +213,7 @@ int sc_loginPlay (int client_fd) {
   // limited crafting
   writeByte(client_fd, false);
   // dimension id
-  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, 1);
   // dimension name
   writeVarInt(client_fd, 9);
   send_all(client_fd, dimension, 9);
@@ -1049,7 +1049,7 @@ int sc_respawn (int client_fd) {
   writeByte(client_fd, 0x4B);
 
   // dimension id
-  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, 1);
   // dimension name
   const char *dimension = "overworld";
   writeVarInt(client_fd, 9);
