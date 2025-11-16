@@ -45,6 +45,9 @@ If using an SD card module or other virtual file system, you'll have to implemen
 
 Alternatively, if you can't set up a file system, you can dump and upload world data over TCP. This can be enabled by uncommenting `DEV_ENABLE_BEEF_DUMPS` in `globals.h`. *Note: this system implements no security or authentication.* With this option enabled, anyone with access to the server can upload arbitrary world data.
 
+#android
+- download de apk out of the /android map, its named bareiron.apk
+
 ## Contribution
 - Create issues and discuss with the maintainer(s) before making pull requests. Even for small changes.
 - Follow the existing code style. Ensure that your changes fit in with the surrounding code, even if you disagree with the style. Pull requests with inconsistent style will be nitpicked.
