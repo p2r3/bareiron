@@ -1,0 +1,3 @@
+/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/14s6r5v6/x86_64/CMakeFiles/bareiron.dir
+/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/14s6r5v6/x86_64/CMakeFiles/edit_cache.dir
+/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/14s6r5v6/x86_64/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,14 @@
+# ninja log v5
+10	31	1763306272781599980	CMakeFiles/bareiron.dir/c/registries.c.o	7635bd4020823a31
+1	47	1763306272798600097	CMakeFiles/bareiron.dir/c/globals.c.o	afb7768c7dc6e5e3
+0	49	1763306272799600104	CMakeFiles/bareiron.dir/jni_wrapper.c.o	be679e763f46d835
+31	58	1763306272809600173	CMakeFiles/bareiron.dir/c/structures.c.o	cee51bccd8fb6e69
+1	64	1763306272811600187	CMakeFiles/bareiron.dir/c/crafting.c.o	9904c3949d3611cc
+11	71	1763306272822600263	CMakeFiles/bareiron.dir/c/serialize.c.o	2f377ddb39292a6
+3	77	1763306272822600263	CMakeFiles/bareiron.dir/c/main.c.o	4ecf5b3fb2545e36
+49	85	1763306272835600352	CMakeFiles/bareiron.dir/c/varnum.c.o	8f6dc123e893f26c
+7	91	1763306272841600394	CMakeFiles/bareiron.dir/c/packets.c.o	c6ea1dcd64e97137
+47	98	1763306272849600449	CMakeFiles/bareiron.dir/c/tools.c.o	40d59ae2e19646b3
+58	106	1763306272857600504	CMakeFiles/bareiron.dir/c/worldgen.c.o	28e3085d231effd3
+9	111	1763306272861600532	CMakeFiles/bareiron.dir/c/procedures.c.o	59d460b4b02a746b
+111	127	1763306272878600649	/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/14s6r5v6/obj/x86_64/libbareiron.so	e86d230a5489d494

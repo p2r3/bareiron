@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/willem/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/14s6r5v6/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/willem/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/14s6r5v6/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "bareiron::@6890427a1f51a3e7e1df": {
+      "artifactName": "bareiron",
+      "abi": "x86_64",
+      "output": "/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/14s6r5v6/obj/x86_64/libbareiron.so",
+      "runtimeFiles": []
+    }
+  }
+}

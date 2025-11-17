@@ -1,0 +1,1 @@
+/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/14s6r5v6/obj/x86_64

@@ -1,0 +1,23 @@
+# ninja log v5
+0	26	1763299888656688603	CMakeFiles/bareiron.dir/jni_wrapper.c.o	8e5e64bb6319c130
+3	45	1763300266455722745	CMakeFiles/bareiron.dir/c/registries.c.o	9b20ae091f4589d4
+1	47	1763300266458722730	CMakeFiles/bareiron.dir/c/globals.c.o	115f0826835c18f
+1	63	1763300266469722676	CMakeFiles/bareiron.dir/jni_wrapper.c.o	d1e61ae060357226
+9	70	1763300266480722622	CMakeFiles/bareiron.dir/c/serialize.c.o	d91dc77ffcda1e69
+1	92	1763300266498722533	CMakeFiles/bareiron.dir/c/crafting.c.o	993d1b836318e3dc
+45	92	1763300266501722519	CMakeFiles/bareiron.dir/c/structures.c.o	1cadd53087af0fe9
+2	105	1763300266516722445	CMakeFiles/bareiron.dir/c/main.c.o	b4ee2ad58229c75
+63	111	1763300266518722435	CMakeFiles/bareiron.dir/c/varnum.c.o	65b67fbb1e769b5c
+70	132	1763300266544722307	CMakeFiles/bareiron.dir/c/worldgen.c.o	ae4b67b30a7e540e
+2	136	1763300266547722292	CMakeFiles/bareiron.dir/c/packets.c.o	a09ecfc78a4efd34
+47	137	1763300266549722282	CMakeFiles/bareiron.dir/c/tools.c.o	4684bd5edbfee218
+2	164	1763300266575722154	CMakeFiles/bareiron.dir/c/procedures.c.o	ee5435ce12772df4
+164	181	1763300266592722070	/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/5g6h5jh6/obj/arm64-v8a/libbareiron.so	215c3528f159c4c5
+1	61	1763300549683364178	CMakeFiles/bareiron.dir/c/main.c.o	b4ee2ad58229c75
+61	78	1763300549700364099	/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/5g6h5jh6/obj/arm64-v8a/libbareiron.so	215c3528f159c4c5
+1	29	1763301002605291635	CMakeFiles/bareiron.dir/jni_wrapper.c.o	d1e61ae060357226
+29	47	1763301002623291554	/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/5g6h5jh6/obj/arm64-v8a/libbareiron.so	215c3528f159c4c5
+1	29	1763301446717603259	CMakeFiles/bareiron.dir/jni_wrapper.c.o	d1e61ae060357226
+29	45	1763301446732603146	/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/5g6h5jh6/obj/arm64-v8a/libbareiron.so	215c3528f159c4c5
+9	105	1763303351906055173	CMakeFiles/bareiron.dir/jni_wrapper.c.o	d1e61ae060357226
+105	158	1763303351961055978	/home/willem/AndroidStudioProjects/bareiron/app/build/intermediates/cxx/Debug/5g6h5jh6/obj/arm64-v8a/libbareiron.so	215c3528f159c4c5

@@ -1,0 +1,62 @@
+[
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/jni_wrapper.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/jni_wrapper.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/jni_wrapper.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/crafting.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/crafting.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/crafting.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/globals.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/globals.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/globals.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/main.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/main.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/main.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/packets.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/packets.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/packets.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/procedures.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/procedures.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/procedures.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/registries.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/registries.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/registries.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/serialize.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/serialize.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/serialize.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/structures.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/structures.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/structures.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/tools.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/tools.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/tools.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/varnum.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/varnum.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/varnum.c"
+},
+{
+  "directory": "/home/willem/AndroidStudioProjects/bareiron/app/.cxx/Debug/5g6h5jh6/arm64-v8a",
+  "command": "/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android21 --sysroot=/home/willem/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -Dbareiron_EXPORTS -I/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -fno-limit-debug-info  -fPIC -o CMakeFiles/bareiron.dir/c/worldgen.c.o -c /home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/worldgen.c",
+  "file": "/home/willem/AndroidStudioProjects/bareiron/app/src/main/cpp/c/worldgen.c"
+}
+]
