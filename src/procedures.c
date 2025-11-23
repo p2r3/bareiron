@@ -1387,9 +1387,9 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
 
 void createExplosion (short x, uint8_t y, short z, short radius, int8_t damage, int attacker) {
   #ifdef MOB_GRIEFING
-    if (attacker == NULL) {
-  #else
     if (true) {
+  #else
+    if (attacker == 0) {
   #endif
     for (short xI = x - radius; xI <= x + radius; xI++) {
       for (uint8_t yI = y - radius; yI <= y + radius; yI++) {
