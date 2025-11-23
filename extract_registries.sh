@@ -3,11 +3,19 @@ set -euo pipefail
 
 REQUIRED_MAJOR=21
 SERVER_JAR="${SERVER_JAR:-server.jar}"
+SERVER_JAR_URL="https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar"
 NOTCHIAN_DIR="notchian"
 JS_RUNTIME=""
 
 get_java_version() {
   java -version 2>&1 | awk -F[\".] '/version/ {print $2}'
+}
+
+check_curl() {
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "curl not found in PATH."
+    exit 1
+  fi
 }
 
 check_java() {
@@ -36,9 +44,9 @@ prepare_notchian_dir() {
 dump_registries() {
   if [[ ! -f "$SERVER_JAR" ]]; then
     echo "No server.jar found (looked for $SERVER_JAR)."
-	echo "Please download the 1.21.8 server.jar (e.g. from https://mcversions.net/download/1.21.8)"
-	echo "and place it in the \"notchian\" directory."
-    exit 1
+	echo "Attempting to download server.jar..."
+    check_curl
+    curl -o "$SERVER_JAR" "$SERVER_JAR_URL"
   fi
 
   java -DbundlerMainClass="net.minecraft.data.Main" -jar "$SERVER_JAR" --all
