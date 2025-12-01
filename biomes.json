@@ -1,0 +1,348 @@
+{
+  "world": {
+    "seed": 12345,
+    "thread_count": -1
+  },
+
+  "noise_layers": [
+    {
+      "name": "temperature",
+      "frequency": 0.003,
+      "octaves": 4,
+      "persistence": 0.5,
+      "lacunarity": 2.0,
+      "amplitude": 1.0,
+      "seed_offset": 0
+    },
+    {
+      "name": "humidity",
+      "frequency": 0.004,
+      "octaves": 4,
+      "persistence": 0.5,
+      "lacunarity": 2.0,
+      "amplitude": 1.0,
+      "seed_offset": 1000
+    },
+    {
+      "name": "elevation",
+      "frequency": 0.005,
+      "octaves": 6,
+      "persistence": 0.5,
+      "lacunarity": 2.0,
+      "amplitude": 1.0,
+      "seed_offset": 2000,
+      "warp": {
+        "enabled": true,
+        "strength": 40.0,
+        "octaves": 3
+      }
+    },
+    {
+      "name": "continentalness",
+      "frequency": 0.001,
+      "octaves": 5,
+      "persistence": 0.6,
+      "lacunarity": 2.5,
+      "amplitude": 1.0,
+      "seed_offset": 3000
+    },
+    {
+      "name": "detail",
+      "frequency": 0.02,
+      "octaves": 3,
+      "persistence": 0.4,
+      "lacunarity": 2.0,
+      "amplitude": 1.0,
+      "seed_offset": 4000
+    },
+    {
+      "name": "cave_noise",
+      "frequency": 0.03,
+      "octaves": 2,
+      "persistence": 0.5,
+      "lacunarity": 2.0,
+      "amplitude": 1.0,
+      "seed_offset": 5000
+    }
+  ],
+
+  "biomes": [
+    {
+      "name": "plains",
+      "conditions": {
+        "temperature": [0.4, 0.8],
+        "humidity": [0.3, 0.7],
+        "elevation": [0.45, 0.65]
+      },
+      "terrain": {
+        "base_height": 64,
+        "height_scale": 8.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "grass_block", "depth": 1},
+        {"block": "dirt", "depth": 4},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "tree",
+          "block": "oak_log",
+          "leaves": "oak_leaves",
+          "chance": 0.05,
+          "min_height": 4,
+          "max_height": 7
+        },
+        {
+          "type": "scatter",
+          "block": "tall_grass",
+          "chance": 0.3
+        },
+        {
+          "type": "ore",
+          "block": "coal_ore",
+          "chance": 0.8,
+          "min_y": 0,
+          "max_y": 128,
+          "vein_size": 16
+        },
+        {
+          "type": "ore",
+          "block": "iron_ore",
+          "chance": 0.5,
+          "min_y": 0,
+          "max_y": 64,
+          "vein_size": 8
+        }
+      ],
+      "caves": {
+        "enabled": true,
+        "threshold": 0.6
+      }
+    },
+    {
+      "name": "desert",
+      "conditions": {
+        "temperature": [0.7, 1.0],
+        "humidity": [0.0, 0.3],
+        "elevation": [0.4, 0.7]
+      },
+      "terrain": {
+        "base_height": 66,
+        "height_scale": 12.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "sand", "depth": 5},
+        {"block": "sandstone", "depth": 8},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "scatter",
+          "block": "dead_bush",
+          "chance": 0.02
+        },
+        {
+          "type": "scatter",
+          "block": "cactus",
+          "chance": 0.01
+        }
+      ],
+      "caves": {
+        "enabled": true,
+        "threshold": 0.65
+      }
+    },
+    {
+      "name": "mountains",
+      "conditions": {
+        "temperature": [0.2, 0.6],
+        "humidity": [0.2, 0.8],
+        "elevation": [0.7, 1.0]
+      },
+      "terrain": {
+        "base_height": 80,
+        "height_scale": 60.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "grass_block", "depth": 1},
+        {"block": "dirt", "depth": 3},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "ore",
+          "block": "emerald_ore",
+          "chance": 0.1,
+          "min_y": 32,
+          "max_y": 128,
+          "vein_size": 1
+        },
+        {
+          "type": "ore",
+          "block": "coal_ore",
+          "chance": 1.0,
+          "min_y": 0,
+          "max_y": 128,
+          "vein_size": 16
+        }
+      ],
+      "caves": {
+        "enabled": true,
+        "threshold": 0.55
+      }
+    },
+    {
+      "name": "forest",
+      "conditions": {
+        "temperature": [0.3, 0.7],
+        "humidity": [0.5, 1.0],
+        "elevation": [0.4, 0.65]
+      },
+      "terrain": {
+        "base_height": 64,
+        "height_scale": 10.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "grass_block", "depth": 1},
+        {"block": "dirt", "depth": 4},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "tree",
+          "block": "oak_log",
+          "leaves": "oak_leaves",
+          "chance": 0.15,
+          "min_height": 5,
+          "max_height": 8
+        },
+        {
+          "type": "scatter",
+          "block": "tall_grass",
+          "chance": 0.5
+        }
+      ],
+      "caves": {
+        "enabled": true,
+        "threshold": 0.6
+      }
+    },
+    {
+      "name": "snowy_tundra",
+      "conditions": {
+        "temperature": [0.0, 0.3],
+        "humidity": [0.2, 0.8],
+        "elevation": [0.4, 0.65]
+      },
+      "terrain": {
+        "base_height": 64,
+        "height_scale": 6.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "snow", "depth": 1},
+        {"block": "snowy_grass_block", "depth": 1},
+        {"block": "dirt", "depth": 3},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "scatter",
+          "block": "ice",
+          "chance": 0.05
+        }
+      ],
+      "caves": {
+        "enabled": true,
+        "threshold": 0.6
+      }
+    },
+    {
+      "name": "swamp",
+      "conditions": {
+        "temperature": [0.5, 0.9],
+        "humidity": [0.7, 1.0],
+        "elevation": [0.3, 0.45]
+      },
+      "terrain": {
+        "base_height": 62,
+        "height_scale": 4.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "mud", "depth": 2},
+        {"block": "dirt", "depth": 3},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "scatter",
+          "block": "lily_pad",
+          "chance": 0.1
+        },
+        {
+          "type": "scatter",
+          "block": "moss_carpet",
+          "chance": 0.2
+        }
+      ],
+      "caves": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "ocean",
+      "conditions": {
+        "temperature": [0.3, 0.8],
+        "humidity": [0.3, 0.8],
+        "elevation": [0.0, 0.35]
+      },
+      "terrain": {
+        "base_height": 40,
+        "height_scale": 15.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "sand", "depth": 3},
+        {"block": "dirt", "depth": 2},
+        {"block": "stone", "depth": -1}
+      ],
+      "features": [],
+      "caves": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "volcanic_peaks",
+      "conditions": {
+        "temperature": [0.8, 1.0],
+        "humidity": [0.0, 0.4],
+        "elevation": [0.75, 1.0]
+      },
+      "terrain": {
+        "base_height": 90,
+        "height_scale": 70.0,
+        "height_noise": "elevation"
+      },
+      "surface_layers": [
+        {"block": "stone", "depth": 1},
+        {"block": "deepslate", "depth": -1}
+      ],
+      "features": [
+        {
+          "type": "scatter",
+          "block": "lava",
+          "chance": 0.005
+        }
+      ],
+      "caves": {
+        "enabled": true,
+        "threshold": 0.5
+      }
+    }
+  ]
+}

@@ -39,6 +39,9 @@
 #include "registries.h"
 #include "procedures.h"
 #include "serialize.h"
+#include "biome_config.h"
+#include "threading.h"
+#include "worldgen_adapter.h"
 
 /**
  * Routes an incoming packet to its packet handler or procedure.
@@ -514,6 +517,19 @@ int main () {
   printf("\nRNG seed (hashed): ");
   for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
   printf("\n\n");
+
+  // Initialize enhanced worldgen system
+  printf("Initializing world generation...\n");
+  init_worldgen_system("biomes.json");
+
+  if (is_using_v2_worldgen()) {
+    printf("Starting chunk generation thread pool with %d threads...\n",
+           world_config.thread_count > 0 ? world_config.thread_count : -1);
+    if (!init_chunk_pool(world_config.thread_count)) {
+      fprintf(stderr, "Warning: Failed to initialize thread pool, using single-threaded worldgen\n");
+    }
+  }
+  printf("\n");
 
   // Initialize block changes entries as unallocated
   for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
