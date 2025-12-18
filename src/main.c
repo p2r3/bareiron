@@ -192,7 +192,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
     case 0x1B:
       if (state == STATE_PLAY) {
         // Serverbound keep-alive (ignored)
-        recv_all(client_fd, recv_buffer, length, false);
+        discard_all(client_fd, length, false);
       }
       break;
 
@@ -466,7 +466,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (packet_id < 16) printf("0");
         printf("%X, length: %d, state: %d\n\n", packet_id, length, state);
       #endif
-      recv_all(client_fd, recv_buffer, length, false);
+      discard_all(client_fd, length, false);
       break;
 
   }
@@ -476,7 +476,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
   if (processed_length == length) return;
 
   if (length > processed_length) {
-    recv_all(client_fd, recv_buffer, length - processed_length, false);
+    discard_all(client_fd, length - processed_length, false);
   }
 
   #ifdef DEV_LOG_LENGTH_DISCREPANCY
