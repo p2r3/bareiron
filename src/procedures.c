@@ -425,7 +425,9 @@ void broadcastPlayerMetadata (PlayerData *player) {
 // If client_fd is -1, broadcasts to all player
 void broadcastMobMetadata (int client_fd, int entity_id) {
 
-  MobData *mob = &mob_data[-entity_id - 2];
+  int mob_index = -entity_id - 2;
+  if (mob_index < 0 || mob_index >= MAX_MOBS) return;
+  MobData *mob = &mob_data[mob_index];
 
   EntityData *metadata;
   size_t length;
@@ -1420,7 +1422,9 @@ void interactEntity (int entity_id, int interactor_id) {
   PlayerData *player;
   if (getPlayerData(interactor_id, &player)) return;
 
-  MobData *mob = &mob_data[-entity_id - 2];
+  int mob_index = -entity_id - 2;
+  if (mob_index < 0 || mob_index >= MAX_MOBS) return;
+  MobData *mob = &mob_data[mob_index];
 
   switch (mob->type) {
     case 106: // Sheep
@@ -1551,7 +1555,10 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
 
   } else { // The attacked entity is a mob
 
-    MobData *mob = &mob_data[-entity_id - 2];
+    int mob_index = -entity_id - 2;
+    if (mob_index < 0 || mob_index >= MAX_MOBS) return;
+    MobData *mob = &mob_data[mob_index];
+
     uint8_t mob_health = mob->data & 31;
 
     // Don't continue if the mob is already dead
