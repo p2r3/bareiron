@@ -233,6 +233,7 @@ typedef struct {
   // 0x10 - eating, makes flagval_16 act as eating timer
   // 0x20 - client loading, uses flagval_16 as fallback timer
   // 0x40 - movement update cooldown
+  // 0x80 - craft_items lock (for storing pointers)
   uint8_t flags;
 } PlayerData;
 

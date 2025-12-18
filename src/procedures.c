@@ -68,6 +68,7 @@ void resetPlayerData (PlayerData *player) {
     player->craft_items[i] = 0;
     player->craft_count[i] = 0;
   }
+  player->flags &= ~0x80;
 }
 
 // Assigns the given data to a player_data entry
@@ -341,6 +342,13 @@ void spawnPlayer (PlayerData *player) {
   sc_synchronizePlayerPosition(player->client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
   task_yield(); // Check task timer between packets
+
+  // Clear crafting grid residue, unlock craft_items
+  for (int i = 0; i < 9; i++) {
+    player->craft_items[i] = 0;
+    player->craft_count[i] = 0;
+  }
+  player->flags &= ~0x80;
 
   // Sync client inventory and hotbar
   for (uint8_t i = 0; i < 41; i ++) {
@@ -1268,6 +1276,8 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
       // is mutually exclusive with chests, though it is otherwise a
       // terrible idea for obvious reasons.
       memcpy(player->craft_items, &storage_ptr, sizeof(storage_ptr));
+      // Flag craft_items as locked due to holding a pointer
+      player->flags |= 0x80;
       // Show the player the chest UI
       sc_openScreen(player->client_fd, 2, "Chest", 5);
       // Load the slots of the chest from the block_changes array.
