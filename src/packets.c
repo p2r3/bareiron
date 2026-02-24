@@ -477,7 +477,8 @@ int sc_setContainerSlot(int client_fd, int window_id, uint16_t slot, uint8_t cou
   
   if (is_tool(item)){  
     if (count > 1) {
-      return sc_setContainerSlotWithComponent(client_fd, window_id, slot, 1, item, 1, 3, max(((uint32_t)(count - 1) * get_tool_durability(item)) / 256, 1));
+      uint16_t calc_val = ((uint32_t)(count - 1) * get_tool_durability(item)) / 256;
+      return sc_setContainerSlotWithComponent(client_fd, window_id, slot, 1, item, 1, 3, (calc_val > 1) ? calc_val : 1);
     }
     else {
       return sc_setContainerSlotWithComponent(client_fd, window_id, slot, 1, item, 0, 0, 0);
