@@ -641,7 +641,7 @@ int cs_clickContainer (int client_fd) {
 
   // Temp vars to prevent durability changes when moving tool in container slots
   uint8_t amount = 0;
-  uint16_t *q_item;
+  uint16_t *q_item = NULL;
   uint8_t *q_count;
 
   #ifdef ALLOW_CHESTS
@@ -676,7 +676,7 @@ int cs_clickContainer (int client_fd) {
         if (is_tool(*p_item)) {
           player->flagval_8 = *p_count;
           player->flagval_16 = *p_item;
-          if (is_tool(*q_item)) {
+          if (q_item && is_tool(*q_item)) {
             *q_count = *p_count;
             #ifdef ALLOW_CHESTS
             if (window_id == 2 && amount > 40) {
