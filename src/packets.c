@@ -24,21 +24,39 @@
 #include "procedures.h"
 #include "packets.h"
 
-// S->C Status Response (server list ping)
-int sc_statusResponse (int client_fd) {
+#define TO_STRING(X) #X
 
+// S->C Status Response (server list ping)
+int sc_statusResponse (int client_fd, int num_online) {
   char header[] = "{"
     "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
+    "\"players\":{"
+      "\"max\":";
+      
+  char middler_a[] = 
+      ","
+      "\"online\":";
+  char middler_b[] = 
+    "},"
     "\"description\":{\"text\":\"";
   char footer[] = "\"}}";
 
-  uint16_t string_len = sizeof(header) + sizeof(footer) + motd_len - 2;
+  char max_players_buf[10];
+  sprintf(max_players_buf, "%d", MAX_PLAYERS);
+  char online_buf[10];
+  sprintf(online_buf, "%d", num_online);
+
+  uint16_t string_len = (sizeof(header) - 1) + strlen(max_players_buf) + (sizeof(middler_a) - 1) + strlen(online_buf) + (sizeof(middler_b) - 1) + motd_len + (sizeof(footer) - 1);
 
   writeVarInt(client_fd, 1 + string_len + sizeVarInt(string_len));
   writeByte(client_fd, 0x00);
 
   writeVarInt(client_fd, string_len);
   send_all(client_fd, header, sizeof(header) - 1);
+  send_all(client_fd, max_players_buf, strlen(max_players_buf));
+  send_all(client_fd, middler_a, sizeof(middler_a) - 1);
+  send_all(client_fd, online_buf, strlen(online_buf));
+  send_all(client_fd, middler_b, sizeof(middler_b) - 1);
   send_all(client_fd, motd, motd_len);
   send_all(client_fd, footer, sizeof(footer) - 1);
 

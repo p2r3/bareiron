@@ -25,7 +25,7 @@ int cs_playerCommand (int client_fd);
 int cs_playerLoaded (int client_fd);
 
 // Clientbound packets
-int sc_statusResponse (int client_fd);
+int sc_statusResponse (int client_fd, int num_players);
 int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name);
 int sc_knownPacks (int client_fd);
 int sc_sendPluginMessage (int client_fd, const char *channel, const uint8_t *data, size_t data_len);
