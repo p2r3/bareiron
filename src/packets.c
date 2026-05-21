@@ -28,6 +28,7 @@
 
 // S->C Status Response (server list ping)
 int sc_statusResponse (int client_fd, int num_online) {
+  #ifdef SHOW_PLAYER_COUNT
   char header[] = "{"
     "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
     "\"players\":{"
@@ -45,18 +46,31 @@ int sc_statusResponse (int client_fd, int num_online) {
   sprintf(max_players_buf, "%d", MAX_PLAYERS);
   char online_buf[10];
   sprintf(online_buf, "%d", num_online);
+  #else
+  char header[] = "{"
+    "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
+    "\"description\":{\"text\":\"";
+  char footer[] = "\"}}";
+  #endif
 
-  uint16_t string_len = (sizeof(header) - 1) + strlen(max_players_buf) + (sizeof(middler_a) - 1) + strlen(online_buf) + (sizeof(middler_b) - 1) + motd_len + (sizeof(footer) - 1);
+  uint16_t string_len =
+    (sizeof(header) - 1)
+  #ifdef SHOW_PLAYER_COUNT
+    + strlen(max_players_buf) + (sizeof(middler_a) - 1) + strlen(online_buf) + (sizeof(middler_b) - 1)
+  #endif
+    + motd_len + (sizeof(footer) - 1);
 
   writeVarInt(client_fd, 1 + string_len + sizeVarInt(string_len));
   writeByte(client_fd, 0x00);
 
   writeVarInt(client_fd, string_len);
   send_all(client_fd, header, sizeof(header) - 1);
+  #ifdef SHOW_PLAYER_COUNT
   send_all(client_fd, max_players_buf, strlen(max_players_buf));
   send_all(client_fd, middler_a, sizeof(middler_a) - 1);
   send_all(client_fd, online_buf, strlen(online_buf));
   send_all(client_fd, middler_b, sizeof(middler_b) - 1);
+  #endif
   send_all(client_fd, motd, motd_len);
   send_all(client_fd, footer, sizeof(footer) - 1);
 

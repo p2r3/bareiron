@@ -22,6 +22,10 @@
 // Even when offline, players who have logged on before take up a slot
 #define MAX_PLAYERS 16
 
+// If defined, server player count will show in multiplayer menu
+// May have a small performance hit
+#define SHOW_PLAYER_COUNT
+
 // How many mobs to allocate memory for
 #define MAX_MOBS (MAX_PLAYERS)
 
