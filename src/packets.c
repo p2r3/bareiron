@@ -29,21 +29,23 @@
 // S->C Status Response (server list ping)
 int sc_statusResponse (int client_fd, int num_online) {
   #ifdef SHOW_PLAYER_COUNT
-  char header[] = "{"
+  char header_template[] = "{"
     "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
     "\"players\":{"
-      "\"max\":";
-      
-  char middler_a[] = 
-      ","
-      "\"online\":";
-  char middler_b[] = 
+      "\"max\":%d,\"online\":\0\0\0\0\0\0\0\0";
+  static char header[sizeof(header_template)] = "";
+  static int header_len = 0;
+
+  if(header_len == 0) {
+    snprintf(header, sizeof(header), header_template, MAX_PLAYERS);
+    header_len = strlen(header);
+  }
+
+  char middler[] = 
     "},"
     "\"description\":{\"text\":\"";
   char footer[] = "\"}}";
 
-  char max_players_buf[10];
-  sprintf(max_players_buf, "%d", MAX_PLAYERS);
   char online_buf[10];
   sprintf(online_buf, "%d", num_online);
   #else
@@ -51,12 +53,14 @@ int sc_statusResponse (int client_fd, int num_online) {
     "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
     "\"description\":{\"text\":\"";
   char footer[] = "\"}}";
+
+  int header_len = sizeof(header) - 1;
   #endif
 
   uint16_t string_len =
-    (sizeof(header) - 1)
+    header_len
   #ifdef SHOW_PLAYER_COUNT
-    + strlen(max_players_buf) + (sizeof(middler_a) - 1) + strlen(online_buf) + (sizeof(middler_b) - 1)
+    + (sizeof(middler) - 1) + strlen(online_buf)
   #endif
     + motd_len + (sizeof(footer) - 1);
 
@@ -64,12 +68,10 @@ int sc_statusResponse (int client_fd, int num_online) {
   writeByte(client_fd, 0x00);
 
   writeVarInt(client_fd, string_len);
-  send_all(client_fd, header, sizeof(header) - 1);
+  send_all(client_fd, header, header_len);
   #ifdef SHOW_PLAYER_COUNT
-  send_all(client_fd, max_players_buf, strlen(max_players_buf));
-  send_all(client_fd, middler_a, sizeof(middler_a) - 1);
   send_all(client_fd, online_buf, strlen(online_buf));
-  send_all(client_fd, middler_b, sizeof(middler_b) - 1);
+  send_all(client_fd, middler, sizeof(middler) - 1);
   #endif
   send_all(client_fd, motd, motd_len);
   send_all(client_fd, footer, sizeof(footer) - 1);
