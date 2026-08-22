@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #ifdef ESP_PLATFORM
   #define WIFI_SSID "your-ssid"
@@ -212,6 +213,7 @@ typedef struct {
   int8_t yaw;
   int8_t pitch;
   uint8_t grounded_y;
+  bool falling;
   uint8_t health;
   uint8_t hunger;
   uint16_t saturation;

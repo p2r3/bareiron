@@ -60,6 +60,7 @@ void resetPlayerData (PlayerData *player) {
   player->y = 80;
   player->flags |= 0x02;
   player->grounded_y = 0;
+  player->falling = false;
   for (int i = 0; i < 41; i ++) {
     player->inventory_items[i] = 0;
     player->inventory_count[i] = 0;
@@ -1489,6 +1490,12 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     else if (held_item == I_iron_sword) damage *= 6;
     else if (held_item == I_diamond_sword) damage *= 7;
     else if (held_item == I_netherite_sword) damage *= 8;
+
+    // Critical hits handling
+    if(player -> falling == true){
+        sc_entityAnimation(attacker_id,entity_id,4); //id 4 being critical particles
+        damage += damage / 2;
+    }
 
     // Enable attack cooldown
     player->flags |= 0x01;

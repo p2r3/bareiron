@@ -225,6 +225,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         // Handle fall damage
         if (on_ground) {
           int16_t damage = player->grounded_y - player->y - 3;
+          player -> falling = false;
           if (damage > 0 && (GAMEMODE == 0 || GAMEMODE == 2) && !swimming) {
             hurtEntity(client_fd, -1, D_fall, damage);
           }
@@ -324,6 +325,11 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           sc_synchronizePlayerPosition(client_fd, cx, 255, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
         }
 
+        // Check if Player is falling
+        //-0.27 due to players jumping 1.25 blocks
+        if(player -> y > y || (player -> y != player-> grounded_y && player -> y > y- 0.27)) {
+            player -> falling = true;
+        }
         // Update position in player data
         player->x = cx;
         player->y = cy;
@@ -443,7 +449,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
       break;
-	
+
     case 0x3C:
       if (state == STATE_PLAY) cs_swingArm(client_fd);
       break;
@@ -546,7 +552,7 @@ int main () {
       (const char*)&opt, sizeof(opt)) < 0) {
 #else
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-#endif    
+#endif
     perror("socket options failed");
     exit(EXIT_FAILURE);
   }
@@ -720,7 +726,7 @@ int main () {
   }
 
   close(server_fd);
- 
+
   #ifdef _WIN32 //cleanup windows socket
     WSACleanup();
   #endif
