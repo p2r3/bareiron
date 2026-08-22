@@ -150,11 +150,19 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           if (mob_data[i].type == 0) continue;
           if ((mob_data[i].data & 31) == 0) continue;
           memcpy(uuid + 4, &i, 4);
+          short block_x = mobBlockX(&mob_data[i]);
+          short block_z = mobBlockZ(&mob_data[i]);
+          double spawn_x = (double)block_x + 0.5;
+          double spawn_z = (double)block_z + 0.5;
           // For more info on the arguments here, see the spawnMob function
           sc_spawnEntity(
             client_fd, -2 - i, uuid,
-            mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,
-            0, 0
+            mob_data[i].type,
+            spawn_x,
+            mob_data[i].y,
+            spawn_z,
+            0,
+            0
           );
           broadcastMobMetadata(client_fd, -2 - i);
         }
@@ -625,6 +633,8 @@ int main () {
       handleServerTick(time_since_last_tick);
       last_tick_time = get_program_time();
     }
+
+    processMobInterpolation(get_program_time());
 
     // Handle this individual client
     int client_fd = clients[client_index];
