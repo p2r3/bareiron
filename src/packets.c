@@ -12,7 +12,6 @@
   #else
     #include <arpa/inet.h>
   #endif
-  #include <unistd.h>
 #endif
 
 #include "globals.h"
