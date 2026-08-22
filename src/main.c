@@ -65,7 +65,7 @@
  * Why have I not done this yet? Well, I'm close to uploading the video,
  * and I don't want to risk refactoring anything this close to release.
  */
-void handlePacket (int client_fd, int length, int packet_id, int state) {
+void handlePacket (int client_fd, int length, int packet_id, int state, int num_online) {
 
   // Count the amount of bytes received to catch length discrepancies
   uint64_t bytes_received_start = total_bytes_received;
@@ -76,7 +76,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       if (state == STATE_NONE) {
         if (cs_handshake(client_fd)) break;
       } else if (state == STATE_STATUS) {
-        if (sc_statusResponse(client_fd)) break;
+        if (sc_statusResponse(client_fd, num_online)) break;
       } if (state == STATE_LOGIN) {
         uint8_t uuid[16];
         char name[16];
@@ -591,10 +591,12 @@ int main () {
    * from each player. With every iteration, attempts to accept a new
    * client connection.
    */
+  int num_players = 0;
   while (true) {
     // Check if it's time to yield to the idle task
     task_yield();
 
+    int new_num_players = 0;
     // Attempt to accept a new connection
     for (int i = 0; i < MAX_PLAYERS; i ++) {
       if (clients[i] != -1) continue;
@@ -710,13 +712,15 @@ int main () {
       disconnectClient(&clients[client_index], 5);
       continue;
     }
+    if (state == STATE_PLAY) new_num_players ++;
     // Handle packet data
-    handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
+    handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state, num_players);
     if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
       disconnectClient(&clients[client_index], 4);
       continue;
     }
 
+    num_players = new_num_players;
   }
 
   close(server_fd);

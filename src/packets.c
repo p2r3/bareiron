@@ -24,21 +24,55 @@
 #include "procedures.h"
 #include "packets.h"
 
-// S->C Status Response (server list ping)
-int sc_statusResponse (int client_fd) {
+#define TO_STRING(X) #X
 
+// S->C Status Response (server list ping)
+int sc_statusResponse (int client_fd, int num_online) {
+  #ifdef SHOW_PLAYER_COUNT
+  char header_template[] = "{"
+    "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
+    "\"players\":{"
+      "\"max\":%d,\"online\":\0\0\0\0\0\0\0\0";
+  static char header[sizeof(header_template)] = "";
+  static int header_len = 0;
+
+  if(header_len == 0) {
+    snprintf(header, sizeof(header), header_template, MAX_PLAYERS);
+    header_len = strlen(header);
+  }
+
+  char middler[] = 
+    "},"
+    "\"description\":{\"text\":\"";
+  char footer[] = "\"}}";
+
+  char online_buf[10];
+  sprintf(online_buf, "%d", num_online);
+  #else
   char header[] = "{"
     "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
     "\"description\":{\"text\":\"";
   char footer[] = "\"}}";
 
-  uint16_t string_len = sizeof(header) + sizeof(footer) + motd_len - 2;
+  int header_len = sizeof(header) - 1;
+  #endif
+
+  uint16_t string_len =
+    header_len
+  #ifdef SHOW_PLAYER_COUNT
+    + (sizeof(middler) - 1) + strlen(online_buf)
+  #endif
+    + motd_len + (sizeof(footer) - 1);
 
   writeVarInt(client_fd, 1 + string_len + sizeVarInt(string_len));
   writeByte(client_fd, 0x00);
 
   writeVarInt(client_fd, string_len);
-  send_all(client_fd, header, sizeof(header) - 1);
+  send_all(client_fd, header, header_len);
+  #ifdef SHOW_PLAYER_COUNT
+  send_all(client_fd, online_buf, strlen(online_buf));
+  send_all(client_fd, middler, sizeof(middler) - 1);
+  #endif
   send_all(client_fd, motd, motd_len);
   send_all(client_fd, footer, sizeof(footer) - 1);
 
