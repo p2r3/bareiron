@@ -39,6 +39,7 @@ int sc_updateTime (int client_fd, uint64_t ticks);
 int sc_setCenterChunk (int client_fd, int x, int y);
 int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z);
 int sc_keepAlive (int client_fd);
+int sc_setContainerSlotWithComponent (int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item, uint8_t component_to_add_amount, uint8_t component_type, uint16_t component_content);
 int sc_setContainerSlot (int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item);
 int sc_setCursorItem (int client_fd, uint16_t item, uint8_t count);
 int sc_setHeldItem (int client_fd, uint8_t slot);

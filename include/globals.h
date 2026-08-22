@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include "registries.h"
+
 #ifdef ESP_PLATFORM
   #define WIFI_SSID "your-ssid"
   #define WIFI_PASS "your-password"
@@ -104,6 +106,31 @@
 
 // Size of the receive buffer for incoming string data
 #define MAX_RECV_BUF_LEN 256
+
+// Tools that should have a durability decrease when breaking a block
+#define TOOLS { \
+    I_wooden_pickaxe, I_wooden_axe, I_wooden_shovel, \
+    I_stone_pickaxe,  I_stone_axe,  I_stone_shovel, \
+    I_iron_pickaxe,   I_iron_axe,   I_iron_shovel, \
+    I_golden_pickaxe, I_golden_axe, I_golden_shovel, \
+    I_diamond_pickaxe,I_diamond_axe,I_diamond_shovel, \
+    I_netherite_pickaxe, I_netherite_axe, I_netherite_shovel, \
+    I_shears \
+}
+
+// The durability of each tool
+#define TOOL_DURABILITY { \
+    59, 59, 59, \
+    131, 131, 131, \
+    250, 250, 250, \
+    32, 32, 32, \
+    1561, 1561, 1561, \
+    2031, 2031, 2031, \
+    238 \
+}
+
+// You must to ensure this after changing the options ahead!!!
+#define TOOL_COUNT 19
 
 // If defined, sends the server brand to clients. Doesn't do much, but will
 // show up in the top-left of the F3/debug menu, in the Minecraft client.
@@ -272,5 +299,8 @@ extern PlayerData player_data[MAX_PLAYERS];
 extern int player_data_count;
 
 extern MobData mob_data[MAX_MOBS];
+
+extern uint16_t tools[];
+extern uint16_t tool_durability[];
 
 #endif

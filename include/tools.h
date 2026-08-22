@@ -28,6 +28,7 @@ uint8_t readByte (int client_fd);
 uint16_t readUint16 (int client_fd);
 int16_t readInt16 (int client_fd);
 uint32_t readUint32 (int client_fd);
+int32_t readInt32 (int client_fd);
 uint64_t readUint64 (int client_fd);
 int64_t readInt64 (int client_fd);
 float readFloat (int client_fd);
@@ -36,9 +37,13 @@ double readDouble (int client_fd);
 ssize_t readLengthPrefixedData (int client_fd);
 void readString (int client_fd);
 void readStringN (int client_fd, uint32_t max_length);
+uint8_t readSlotData(int client_fd, uint16_t *item, uint8_t *count);
 
 uint32_t fast_rand ();
 uint64_t splitmix64 (uint64_t state);
+
+uint8_t is_tool(uint16_t item);
+uint16_t get_tool_durability(int item);
 
 #ifdef ESP_PLATFORM
   #include "esp_timer.h"

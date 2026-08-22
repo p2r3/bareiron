@@ -193,6 +193,13 @@ uint32_t readUint32 (int client_fd) {
          ((uint32_t)recv_buffer[2] << 8) |
          ((uint32_t)recv_buffer[3]);
 }
+int32_t readInt32 (int client_fd) {
+  recv_count = recv_all(client_fd, recv_buffer, 4, false);
+  return ((int32_t)recv_buffer[0] << 24) |
+         ((int32_t)recv_buffer[1] << 16) |
+         ((int32_t)recv_buffer[2] << 8) |
+         ((int32_t)recv_buffer[3]);
+}
 uint64_t readUint64 (int client_fd) {
   recv_count = recv_all(client_fd, recv_buffer, 8, false);
   return ((uint64_t)recv_buffer[0] << 56) |
@@ -268,6 +275,29 @@ void readStringN (int client_fd, uint32_t max_length) {
   }
 }
 
+// Reads a Slot Data and return if there is any item
+uint8_t readSlotData(int client_fd, uint16_t *item, uint8_t *count) {
+  if (readByte(client_fd)) {
+    *item = readVarInt(client_fd);
+    *count = (uint8_t)readVarInt(client_fd);
+
+    // ignore components
+    uint8_t component_count = readVarInt(client_fd);
+    for (uint8_t i = 0; i < component_count; i++) {
+      readVarInt(client_fd);
+      readInt32(client_fd);
+    }
+    component_count = readVarInt(client_fd);
+    for (uint8_t i = 0; i < component_count; i++) {
+      readVarInt(client_fd);
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
 uint32_t fast_rand () {
   rng_seed ^= rng_seed << 13;
   rng_seed ^= rng_seed >> 17;
@@ -280,6 +310,20 @@ uint64_t splitmix64 (uint64_t state) {
   z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
   z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
   return z ^ (z >> 31);
+}
+
+uint8_t is_tool(uint16_t item) {
+    for (uint8_t i = 0; i < TOOL_COUNT; i++) {
+        if (tools[i] == item) return 1;
+    }
+    return 0;
+}
+
+uint16_t get_tool_durability(int item) {
+    for (uint8_t i = 0; i < TOOL_COUNT; i++) {
+        if (tools[i] == item) return tool_durability[i];
+    }
+    return 0;
 }
 
 #ifndef ESP_PLATFORM

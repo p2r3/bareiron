@@ -54,3 +54,6 @@ PlayerData player_data[MAX_PLAYERS];
 int player_data_count = 0;
 
 MobData mob_data[MAX_MOBS];
+
+uint16_t tools[] = TOOLS;
+uint16_t tool_durability[] = TOOL_DURABILITY;

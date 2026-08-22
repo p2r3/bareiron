@@ -717,27 +717,34 @@ uint16_t getMiningResult (uint16_t held_item, uint8_t block) {
 
 }
 
-// Rolls a random number to determine whether the player's tool should break
+// Rolls a random number to determine whether the player's tool should has a durability decrease
 void bumpToolDurability (PlayerData *player) {
 
   uint16_t held_item = player->inventory_items[player->hotbar];
 
   // In order to avoid storing durability data, items break randomly with
   // the probability weighted based on vanilla durability.
+  if (is_tool(held_item)) {
+    uint16_t n = get_tool_durability(held_item);
+    if (255 - player->inventory_count[player->hotbar] < 255 / n + 1) {
+      player->inventory_items[player->hotbar] = 0;
+      player->inventory_count[player->hotbar] = 0;
+      sc_entityEvent(player->client_fd, player->client_fd, 47);
+      sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
+      return;
+    }
+
   uint32_t r = fast_rand();
-  if (
-    ((held_item == I_wooden_pickaxe || held_item == I_wooden_axe || held_item == I_wooden_shovel) && r < 72796055) ||
-    ((held_item == I_stone_pickaxe || held_item == I_stone_axe || held_item == I_stone_shovel) && r < 32786009) ||
-    ((held_item == I_iron_pickaxe || held_item == I_iron_axe || held_item == I_iron_shovel) && r < 17179869) ||
-    ((held_item == I_golden_pickaxe || held_item == I_golden_axe || held_item == I_golden_shovel) && r < 134217728) ||
-    ((held_item == I_diamond_pickaxe || held_item == I_diamond_axe || held_item == I_diamond_shovel) && r < 2751420) ||
-    ((held_item == I_netherite_pickaxe || held_item == I_netherite_axe || held_item == I_netherite_shovel) && r < 2114705) ||
-    (held_item == I_shears && r < 18046081)
-  ) {
-    player->inventory_items[player->hotbar] = 0;
-    player->inventory_count[player->hotbar] = 0;
-    sc_entityEvent(player->client_fd, player->client_fd, 47);
-    sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
+    player->inventory_count[player->hotbar] += 255 / n;
+    if (r < (255 % n) * (UINT32_MAX / n)) {
+      player->inventory_count[player->hotbar] += 1;
+    }
+
+    // the first using of a tool cost at least 1 durability
+    if (player->inventory_count[player->hotbar] == 1){
+      player->inventory_count[player->hotbar] += 1;
+    }
+    sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), player->inventory_count[player->hotbar], held_item);
   }
 
 }

@@ -441,14 +441,15 @@ int sc_keepAlive (int client_fd) {
 }
 
 // S->C Set Container Slot
-int sc_setContainerSlot (int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item) {
+int sc_setContainerSlotWithComponent (int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item, uint8_t component_to_add_amount, uint8_t component_type, uint16_t component_content) {
 
   writeVarInt(client_fd,
     1 +
     sizeVarInt(window_id) +
     1 + 2 +
     sizeVarInt(count) +
-    (count > 0 ? sizeVarInt(item) + 2 : 0)
+    (count > 0 ? sizeVarInt(item) + sizeVarInt(component_to_add_amount) + 1 + 
+    (component_to_add_amount == 1 ? sizeVarInt(component_type) + sizeVarInt(component_content) : 0) : 0)// ← length of "Components to add" array
   );
   writeByte(client_fd, 0x14);
 
@@ -459,12 +460,33 @@ int sc_setContainerSlot (int client_fd, int window_id, uint16_t slot, uint8_t co
   writeVarInt(client_fd, count);
   if (count > 0) {
     writeVarInt(client_fd, item);
+    writeVarInt(client_fd, component_to_add_amount);
     writeVarInt(client_fd, 0);
-    writeVarInt(client_fd, 0);
+    if (component_to_add_amount == 1) {
+      writeVarInt(client_fd, component_type);
+      writeVarInt(client_fd, component_content);
+    }
   }
 
   return 0;
 
+}
+
+// The original Set Container Slot function
+int sc_setContainerSlot(int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item) {
+  
+  if (is_tool(item)){  
+    if (count > 1) {
+      uint16_t calc_val = ((uint32_t)(count - 1) * get_tool_durability(item)) / 256;
+      return sc_setContainerSlotWithComponent(client_fd, window_id, slot, 1, item, 1, 3, (calc_val > 1) ? calc_val : 1);
+    }
+    else {
+      return sc_setContainerSlotWithComponent(client_fd, window_id, slot, 1, item, 0, 0, 0);
+    }
+  }
+  else{
+    return sc_setContainerSlotWithComponent(client_fd, window_id, slot, count, item, 0, 0, 0);
+  }
 }
 
 // S->C Block Update
@@ -617,6 +639,11 @@ int cs_clickContainer (int client_fd) {
   uint16_t *p_item;
   uint8_t *p_count;
 
+  // Temp vars to prevent durability changes when moving tool in container slots
+  uint8_t amount = 0;
+  uint16_t *q_item = NULL;
+  uint8_t *q_count;
+
   #ifdef ALLOW_CHESTS
   // See the handlePlayerUseItem function for more info on this hack
   uint8_t *storage_ptr;
@@ -644,8 +671,21 @@ int cs_clickContainer (int client_fd) {
       p_count = &player->inventory_count[slot];
     }
 
-    if (!readByte(client_fd)) { // no item?
+    if (!readSlotData(client_fd, &item, &count)) { // no item?
       if (slot != 255 && apply_changes) {
+        if (is_tool(*p_item)) {
+          player->flagval_8 = *p_count;
+          player->flagval_16 = *p_item;
+          if (q_item && is_tool(*q_item)) {
+            *q_count = *p_count;
+            #ifdef ALLOW_CHESTS
+            if (window_id == 2 && amount > 40) {
+              broadcastChestUpdate(client_fd, storage_ptr, *q_item, *q_count, amount - 41);
+            }
+            #endif
+          }
+        }
+        
         *p_item = 0;
         *p_count = 0;
         #ifdef ALLOW_CHESTS
@@ -657,19 +697,49 @@ int cs_clickContainer (int client_fd) {
       continue;
     }
 
-    item = readVarInt(client_fd);
-    count = (uint8_t)readVarInt(client_fd);
-
-    // ignore components
-    readLengthPrefixedData(client_fd);
-    readLengthPrefixedData(client_fd);
 
     if (count > 0 && apply_changes) {
+      if (mode == 1 && button == 0) {
+        if (is_tool(item)) {
+          if (is_tool(player->flagval_16)) {
+            *p_count = player->flagval_8;
       *p_item = item;
+            #ifdef ALLOW_CHESTS
+            if (window_id == 2 && slot > 40) {
+              broadcastChestUpdate(client_fd, storage_ptr, item, *p_count, slot - 41);
+            }
+            #endif
+          } else {
+            q_count = p_count;
+            q_item = p_item;
+            #ifdef ALLOW_CHESTS
+            amount = slot;
+            #endif
+          }
+        } else {
       *p_count = count;
+        }
+      }
+      else {
+        if (is_tool(player->flagval_16)) {
+          if (is_tool(*p_item)) {
+            amount = *p_count;
+            *p_count = player->flagval_8;
+            player->flagval_8 = amount;
+          } else {
+            *p_count = player->flagval_8;
+          }
+        } else if (is_tool(*p_item)) {
+          player->flagval_8 = *p_count;
+          *p_count = count;
+        } else {
+          *p_count = count;
+        }
+      }
+      *p_item = item;
       #ifdef ALLOW_CHESTS
       if (window_id == 2 && slot > 40) {
-        broadcastChestUpdate(client_fd, storage_ptr, item, count, slot - 41);
+        broadcastChestUpdate(client_fd, storage_ptr, item, *p_count, slot - 41);
       }
       #endif
     }
@@ -688,15 +758,14 @@ int cs_clickContainer (int client_fd) {
   }
 
   // assign cursor-carried item slot
-  if (readByte(client_fd)) {
-    player->flagval_16 = readVarInt(client_fd);
-    player->flagval_8 = readVarInt(client_fd);
-    // ignore components
-    readLengthPrefixedData(client_fd);
-    readLengthPrefixedData(client_fd);
-  } else {
+  if (!readSlotData(client_fd, &player->flagval_16, &amount)) {
     player->flagval_16 = 0;
     player->flagval_8 = 0;
+  }
+  if (!is_tool(player->flagval_16)){
+    player->flagval_8 = amount;
+  } else if (player->flagval_8 == 0) {
+    player->flagval_8 = 1;
   }
 
   return 0;
