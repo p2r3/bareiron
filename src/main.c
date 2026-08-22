@@ -384,7 +384,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
               else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 10); // Pig
               else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 8); // Sheep
             } else {
-              spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+              spawnHostileMob(mob_x, mob_y, mob_z);
             }
           }
         }
