@@ -377,14 +377,33 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           if (mob_y != 255) {
             // Spawn passive mobs above ground during the day,
             // or hostiles underground and during the night
+            uint32_t mob_choice = (r >> 12) & 3;
             if ((world_time < 13000 || world_time > 23460) && mob_y > 48) {
-              uint32_t mob_choice = (r >> 12) & 3;
-              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 4); // Chicken
-              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 10); // Cow
-              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 10); // Pig
-              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 8); // Sheep
+              switch (mob_choice) {
+                case 0:
+                  spawnMob(25, mob_x, mob_y, mob_z, 4); // Chicken
+                case 1:
+                  spawnMob(28, mob_x, mob_y, mob_z, 10); // Cow
+                case 2:
+                  spawnMob(95, mob_x, mob_y, mob_z, 10); // Pig
+                case 3:
+                  spawnMob(106, mob_x, mob_y, mob_z, 8); // Sheep
+                default:
+                  break;
+              }
             } else {
-              spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+              switch (mob_choice) {
+                case 0:
+                case 1:
+                case 2:
+                  spawnMob(/*(biome == W_desert) ? 65 :*/ 145, mob_x, mob_y, mob_z, 20); // Zombie
+                  break;
+                case 3:
+                  spawnMob(30, mob_x, mob_y, mob_z, 8); // Creeper, aww man
+                  break;
+                default:
+                  break;
+              }
             }
           }
         }
@@ -443,7 +462,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
       break;
-	
+    
     case 0x3C:
       if (state == STATE_PLAY) cs_swingArm(client_fd);
       break;

@@ -406,14 +406,14 @@ void broadcastPlayerMetadata (PlayerData *player) {
 
   EntityData metadata[] = {
     {
-      0,                   // Index (Entity Bit Mask)
-      0,                   // Type (Byte)
-      { entity_bit_mask }, // Value
+      0,               // Index (Entity Bit Mask)
+      0,               // Type (Byte)
+      entity_bit_mask, // Value
     },
     {
-      6,        // Index (Pose),
-      21,       // Type (Pose),
-      { pose }, // Value (Standing)
+      6,    // Index (Pose),
+      21,   // Type (Pose),
+      pose, // Value (Standing)
     }
   };
 
@@ -441,15 +441,28 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
   size_t length;
 
   switch (mob->type) {
+    case 30: { // Creeper
+      int fuse;
+      if ((mob->data >> 6) & 3) fuse = 1;
+      else fuse = -1;
+      metadata = malloc(sizeof *metadata);
+      metadata[0] = (EntityData){
+        16,                  // Index (Fuse)
+        1,                   // Type (VarInt)
+        { .varint = fuse },  // Value
+      };
+      length = 1;
+      break;
+    }
     case 106: // Sheep
       if (!((mob->data >> 5) & 1)) // Don't send metadata if sheep isn't sheared
         return;
 
       metadata = malloc(sizeof *metadata);
       metadata[0] = (EntityData){
-        17,                // Index (Sheep Bit Mask),
-        0,                 // Type (Byte),
-        { (uint8_t)0x10 }, // Value
+        17,            // Index (Sheep Bit Mask),
+        0,             // Type (Byte),
+        (uint8_t)0x10, // Value
       };
       length = 1;
 
@@ -1386,6 +1399,39 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
 
 }
 
+void createExplosion (short x, uint8_t y, short z, short radius, int8_t damage, int attacker) {
+  #ifdef MOB_GRIEFING
+    if (true) {
+  #else
+    if (attacker == 0) {
+  #endif
+    for (short xI = x - radius; xI <= x + radius; xI++) {
+      for (uint8_t yI = y - radius; yI <= y + radius; yI++) {
+        for (short zI = z - radius; zI <= z + radius; zI++) {
+          short randRad = (radius * (fast_rand() / 0x1FFFFFF + 192)) / 255;
+
+          if (((xI- x) * (xI - x) + (yI - y) * (yI - y) + (zI - z) * (zI - z)) <= randRad*randRad) {
+            makeBlockChange(xI, yI, zI, B_air);
+          }
+        }
+      }
+    }
+  }
+
+  if (damage != 0) {
+    for (int i = 0; i < MAX_PLAYERS; i ++) {
+      if (player_data[i].client_fd == -1) continue;
+      short x2 = x - player_data[i].x, y2 = z - player_data[i].z;
+      if (x2 * x2 + y2 * y2 < radius * radius) hurtEntity(player_data[i].client_fd, attacker, D_explosion, 10);
+    }
+    for (int i = 0; i < MAX_MOBS; i ++) {
+      if (mob_data[i].type == 0) continue;
+      short x2 = x - mob_data[i].x, y2 = z - mob_data[i].z;
+      if (x2 * x2 + y2 * y2 < radius * radius) hurtEntity(-2 - i, attacker, D_explosion, 10);
+    }
+  }
+}
+
 void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
   for (int i = 0; i < MAX_MOBS; i ++) {
@@ -1537,6 +1583,15 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         // Killed by being in lava
         strcpy((char *)recv_buffer + player_name_len, " tried to swim in lava");
         recv_buffer[player_name_len + 22] = '\0';
+      } else if (damage_type == D_explosion) {
+        // Killed by an explosion
+        if (attacker_id < -1) {
+          strcpy((char *)recv_buffer + player_name_len, " blown up by a mob");
+          recv_buffer[player_name_len + 18] = '\0';
+        } else {
+          strcpy((char *)recv_buffer + player_name_len, " blew up");
+          recv_buffer[player_name_len + 8] = '\0';
+        }
       } else if (attacker_id < -1) {
         // Killed by a mob
         strcpy((char *)recv_buffer + player_name_len, " was slain by a mob");
@@ -1591,6 +1646,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         switch (mob->type) {
           case 25: givePlayerItem(player, I_chicken, 1); break;
           case 28: givePlayerItem(player, I_beef, 1 + (fast_rand() % 3)); break;
+          case 30: givePlayerItem(player, I_gunpowder, (fast_rand() % 3)); break;
           case 95: givePlayerItem(player, I_porkchop, 1 + (fast_rand() % 3)); break;
           case 106: givePlayerItem(player, I_mutton, 1 + (fast_rand() & 1)); break;
           case 145: givePlayerItem(player, I_rotten_flesh, (fast_rand() % 3)); break;
@@ -1734,8 +1790,8 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Currently has no effect on hostile mobs
     uint8_t panic = (mob_data[i].data >> 6) & 3;
 
-    // Burn hostile mobs if above ground during sunlight
-    if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
+    // Burn undead mobs if above ground during sunlight
+    if (mob_data[i].type == 145 && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
       hurtEntity(entity_id, -1, D_on_fire, 2);
     }
 
@@ -1805,8 +1861,20 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
-        hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        if (mob_data[i].type == 30) { // If mob is a creeper explode instead of deal meelee damage
+          if (panic >= 2) {
+            createExplosion(mob_data[i].x, mob_data[i].y, mob_data[i].z, 4, 10, entity_id);
+          } else if (server_ticks % (uint32_t)TICKS_PER_SECOND == 0) {
+            mob_data[i].data += (1 << 6);
+            broadcastMobMetadata(-1, entity_id);
+          }
+        } else {
+          hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+        }
         continue;
+      } else if (mob_data[i].type == 30 && panic != 0) { // Defuse creeper
+        mob_data[i].data &= 0x3F;
+        broadcastMobMetadata(-1, entity_id);
       }
 
       // Move towards the closest player on 8 axis
@@ -1953,8 +2021,9 @@ ssize_t writeEntityData (int client_fd, EntityData *data) {
   switch (data->type) {
     case 0: // Byte
       return writeByte(client_fd, data->value.byte);
+    case 1: // VarInt
     case 21: // Pose
-      writeVarInt(client_fd, data->value.pose);
+      writeVarInt(client_fd, data->value.varint);
       return 0;
 
     default: return -1;
@@ -1969,8 +2038,9 @@ int sizeEntityData (EntityData *data) {
     case 0: // Byte
       value_size = 1;
       break;
+    case 1: // VarInt
     case 21: // Pose
-      value_size = sizeVarInt(data->value.pose);
+      value_size = sizeVarInt(data->value.varint);
       break;
 
     default: return -1;
