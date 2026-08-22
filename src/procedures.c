@@ -441,6 +441,18 @@ void broadcastMobMetadata (int client_fd, int entity_id) {
   size_t length;
 
   switch (mob->type) {
+    case 30: // Creeper
+      int fuse;
+      if ((mob->data >> 6) & 3) fuse = 1;
+      else fuse = -1;
+      metadata = malloc(sizeof *metadata);
+      metadata[0] = (EntityData){
+        16,                  // Index (Fuse)
+        1,                   // Type (VarInt)
+        { .varint = fuse },  // Value
+      };
+      length = 1;
+      break;
     case 106: // Sheep
       if (!((mob->data >> 5) & 1)) // Don't send metadata if sheep isn't sheared
         return;
@@ -1537,6 +1549,10 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         // Killed by being in lava
         strcpy((char *)recv_buffer + player_name_len, " tried to swim in lava");
         recv_buffer[player_name_len + 22] = '\0';
+      } else if (damage_type == D_explosion) {
+        // Killed by an explosion
+        strcpy((char *)recv_buffer + player_name_len, " blew up");
+        recv_buffer[player_name_len + 8] = '\0';
       } else if (attacker_id < -1) {
         // Killed by a mob
         strcpy((char *)recv_buffer + player_name_len, " was slain by a mob");
@@ -1591,6 +1607,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         switch (mob->type) {
           case 25: givePlayerItem(player, I_chicken, 1); break;
           case 28: givePlayerItem(player, I_beef, 1 + (fast_rand() % 3)); break;
+          case 30: givePlayerItem(player, I_gunpowder, (fast_rand() % 3)); break;
           case 95: givePlayerItem(player, I_porkchop, 1 + (fast_rand() % 3)); break;
           case 106: givePlayerItem(player, I_mutton, 1 + (fast_rand() & 1)); break;
           case 145: givePlayerItem(player, I_rotten_flesh, (fast_rand() % 3)); break;
@@ -1730,12 +1747,13 @@ void handleServerTick (int64_t time_since_last_tick) {
       mob_data[i].type == 95 || // Pig
       mob_data[i].type == 106 // Sheep
     );
-    // Mob "panic" timer, set to 3 after being hit
-    // Currently has no effect on hostile mobs
+    // Mob "panic" timer
+    // For passive mobs, set to 3 after being hit
+    // For hostile mobs may vary. Represents creeper fuse timer.
     uint8_t panic = (mob_data[i].data >> 6) & 3;
 
-    // Burn hostile mobs if above ground during sunlight
-    if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
+    // Burn hostile burnable mobs if above ground during sunlight
+    if (mob_data[i].type == 145 && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
       hurtEntity(entity_id, -1, D_on_fire, 2);
     }
 
@@ -1801,11 +1819,52 @@ void handleServerTick (int64_t time_since_last_tick) {
         else { new_z -= 1; yaw = 128; }
       }
 
-    } else { // Hostile mob movement handling
+    } else { // Hostile mob movement handling and attacks
 
-      // If we're already next to the player, hurt them and skip movement
-      if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
-        hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
+      // Attack checks. If successful, also skip movement.
+      // Close melee attacks (~2 blocks)
+      bool close_on_y_axis = abs(old_y - closest_player->y) < 2;
+      if (closest_dist < 3 && close_on_y_axis) {
+        switch (mob_data[i].type) {
+          case 145: hurtEntity(closest_player->client_fd, entity_id, D_generic, 6); continue; // Zombie
+          default: break;
+        }
+      }
+
+      // Middle-range attacks (~4 blocks)
+      if (closest_dist < 5 && close_on_y_axis) {
+        switch (mob_data[i].type) {
+          case 30: // Creeper
+            if (panic){
+              // Explode and deal damage
+              for (int j = 0; j < MAX_PLAYERS; j ++) {
+                if (player_data[j].client_fd == -1) continue;
+                uint16_t curr_dist = (
+                  abs(mob_data[i].x - player_data[j].x) +
+                  abs(mob_data[i].z - player_data[j].z)
+                );
+                // Attack every player in area of explosion
+                if (curr_dist < 5) hurtEntity(player_data[j].client_fd, entity_id, D_explosion, 10);
+                // Broadcast creeper disappearance from all players
+                sc_removeEntity(player_data[j].client_fd, entity_id);
+              }
+              #ifdef MOB_GRIEFING
+              placeCraterStructure(mob_data[i].x, mob_data[i].y + 1, mob_data[i].z, 3);
+              #endif
+              mob_data[i].type = 0;
+            } else {
+              mob_data[i].data += (1 << 6);
+              broadcastMobMetadata(-1, entity_id);
+            }
+            continue;
+          default: break;
+        }
+      }
+
+      // Creeper defuse
+      if (mob_data[i].type == 30 && panic && (closest_dist >= 5 || !close_on_y_axis)) {
+        mob_data[i].data &= 0x3F;
+        broadcastMobMetadata(-1, entity_id);
         continue;
       }
 
@@ -1953,8 +2012,9 @@ ssize_t writeEntityData (int client_fd, EntityData *data) {
   switch (data->type) {
     case 0: // Byte
       return writeByte(client_fd, data->value.byte);
+    case 1: // VarInt
     case 21: // Pose
-      writeVarInt(client_fd, data->value.pose);
+      writeVarInt(client_fd, data->value.varint);
       return 0;
 
     default: return -1;
@@ -1969,8 +2029,9 @@ int sizeEntityData (EntityData *data) {
     case 0: // Byte
       value_size = 1;
       break;
+    case 1: // VarInt
     case 21: // Pose
-      value_size = sizeVarInt(data->value.pose);
+      value_size = sizeVarInt(data->value.varint);
       break;
 
     default: return -1;

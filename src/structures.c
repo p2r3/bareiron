@@ -53,3 +53,28 @@ void placeTreeStructure (short x, uint8_t y, short z) {
   }
 
 }
+
+// Places an explosion crater centered on the input coordinates
+void placeCraterStructure (short x, uint8_t y, short z, uint8_t radius) {
+  int radius_sq = radius * radius;
+  
+  // Air blocks are placed in a sphere
+  // Starting with y to check for height bounds
+  for (int dy = -radius; dy <= radius; dy++) {
+    if (y + dy < 0 || y + dy > 255) continue;
+    int dy_sq = dy * dy;
+    for (int dx = -radius; dx <= radius; dx++) {
+      int dx_sq = dx * dx;
+      for (int dz = -radius; dz <= radius; dz++) {
+        int dist_sq = dx_sq + dy_sq + (dz * dz);
+        if (dist_sq <= radius_sq) {
+          // Don't replace what is already air
+          uint8_t current_block = getBlockAt(x + dx, y + dy, z + dz);
+          if (current_block != B_air) {
+            makeBlockChange(x + dx, y + dy, z + dz, B_air);
+          }
+        }
+      }
+    }
+  }
+}

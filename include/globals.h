@@ -162,6 +162,9 @@
 // Doesn't implement authentication, hence disabled by default.
 // #define DEV_ENABLE_BEEF_DUMPS
 
+// If defined, mobs are allowed to affect terrain
+#define MOB_GRIEFING
+
 #define STATE_NONE 0
 #define STATE_STATUS 1
 #define STATE_LOGIN 2
@@ -254,12 +257,13 @@ typedef struct {
 
 union EntityDataValue {
   uint8_t byte;
-  int pose;
+  int varint; // Also used for poses
 };
 
 typedef struct {
   uint8_t index;
   // 0 - Byte
+  // 1 - VarInt
   // 21 - Pose
   int type;
   union EntityDataValue value;
