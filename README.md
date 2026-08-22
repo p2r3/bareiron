@@ -15,7 +15,7 @@ For PC x86_64 platforms, grab the [latest build binary](https://github.com/p2r3/
 For microcontrollers, see the section on **compilation** below.
 
 ## Compilation
-Before compiling, you'll need to dump registry data from a vanilla Minecraft server. On Linux, this can be done automatically using the `extract_registries.sh` script. Otherwise, the manual process is as follows: create a folder called `notchian` here, and put a Minecraft server JAR in it. Then, follow [this guide](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Data_Generators) to dump all of the registries (use the _second_ command with the `--all` flag). Finally, run `build_registries.js` with either [bun](https://bun.sh/), [node](https://nodejs.org/en/download), or [deno](https://docs.deno.com/runtime/getting_started/installation/).
+Before compiling, you'll need to dump registry data from a vanilla Minecraft server using the `extract_registries` script.
 
 - To compile on Linux, install `gcc` and run `./build.sh`.
 - For compiling on Windows, there are a few options:
