@@ -664,7 +664,9 @@ int cs_clickContainer (int client_fd) {
     readLengthPrefixedData(client_fd);
     readLengthPrefixedData(client_fd);
 
-    if (count > 0 && apply_changes) {
+    // Slot 255 means a slot the server keeps nowhere (a result slot, or a
+    // window it does not know); writing it would land outside the player
+    if (slot != 255 && count > 0 && apply_changes) {
       *p_item = item;
       *p_count = count;
       #ifdef ALLOW_CHESTS
