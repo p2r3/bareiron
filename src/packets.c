@@ -589,6 +589,13 @@ int cs_clickContainer (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
+  #ifdef ALLOW_CHESTS
+  // Chest clicks write through the pointer stashed in craft_items, which
+  // is only valid while the chest UI is open (flag 0x80). Without it,
+  // storage_ptr below would be a stale or zero pointer.
+  if (window_id == 2 && !(player->flags & 0x80)) return 1;
+  #endif
+
   uint8_t apply_changes = true;
   // prevent dropping items
   if (mode == 4 && clicked_slot != -999) {
