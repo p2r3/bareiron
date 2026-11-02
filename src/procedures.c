@@ -55,8 +55,10 @@ void resetPlayerData (PlayerData *player) {
   player->health = 20;
   player->hunger = 20;
   player->saturation = 2500;
-  player->x = 8;
-  player->z = 8;
+  short spawn_x, spawn_z;
+  findSpawnColumn(&spawn_x, &spawn_z);
+  player->x = spawn_x;
+  player->z = spawn_z;
   player->y = 80;
   player->flags |= 0x02;
   player->grounded_y = 0;
@@ -325,8 +327,10 @@ void spawnPlayer (PlayerData *player) {
   float spawn_yaw = 0.0f, spawn_pitch = 0.0f;
 
   if (player->flags & 0x02) { // Is this a new player?
-    // Determine spawning Y coordinate based on terrain height
-    spawn_y = getHeightAt(8, 8) + 1;
+    // Spawn on the dry column resetPlayerData chose, at terrain height
+    spawn_x = (float)player->x + 0.5f;
+    spawn_z = (float)player->z + 0.5f;
+    spawn_y = getHeightAt(player->x, player->z) + 1;
     player->y = spawn_y;
     player->flags &= ~0x02;
   } else { // Not a new player
@@ -806,6 +810,48 @@ uint8_t isPassableSpawnBlock (uint8_t block) {
         return 0;
     }
     return isPassableBlock(block);
+}
+
+// Solid ground that is neither water nor ice, with room for feet and head
+static uint8_t isDrySpawnColumn (short x, short z) {
+  uint8_t h = getHeightAt(x, z);
+  uint8_t ground = getBlockAt(x, h, z);
+  if (isPassableBlock(ground) || ground == B_ice) return 0;
+  return isPassableSpawnBlock(getBlockAt(x, h + 1, z)) &&
+         isPassableSpawnBlock(getBlockAt(x, h + 2, z));
+}
+
+// Where new players appear: the nearest dry column to (8, 8), searched in
+// rings 4 blocks apart out to 64 blocks. The terrain at (8, 8) can be a
+// lake, and under a frozen one the player is trapped beneath the ice.
+// Falls back to (8, 8) if the whole area is water. Cached per world seed.
+void findSpawnColumn (short *x, short *z) {
+  static uint8_t cached = 0;
+  static uint32_t cached_seed;
+  static short cached_x = 8, cached_z = 8;
+  if (cached && cached_seed == world_seed) {
+    *x = cached_x;
+    *z = cached_z;
+    return;
+  }
+  cached_x = 8;
+  cached_z = 8;
+  for (int ring = 0; ring <= 64; ring += 4) {
+    for (int dx = -ring; dx <= ring; dx += 4) {
+      for (int dz = -ring; dz <= ring; dz += 4) {
+        if (dx != -ring && dx != ring && dz != -ring && dz != ring) continue;
+        if (!isDrySpawnColumn(8 + dx, 8 + dz)) continue;
+        cached_x = 8 + dx;
+        cached_z = 8 + dz;
+        goto found;
+      }
+    }
+  }
+  found:
+  cached = 1;
+  cached_seed = world_seed;
+  *x = cached_x;
+  *z = cached_z;
 }
 
 // Checks whether the given block can be replaced by another block
