@@ -34,6 +34,7 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block);
 uint8_t isColumnBlock (uint8_t block);
 uint8_t isPassableBlock (uint8_t block);
 uint8_t isPassableSpawnBlock (uint8_t block);
+void findSpawnColumn (short *x, short *z); // dry land near (8, 8)
 uint8_t isReplaceableBlock (uint8_t block);
 uint32_t isCompostItem (uint16_t item);
 uint8_t getItemStackSize (uint16_t item);
